@@ -1,0 +1,19 @@
+{
+  "repository": {
+    "delete_branch_on_merge": true,
+    "allow_auto_merge": true,
+    "allow_update_branch": true,
+    "allow_squash_merge": true,
+    "allow_merge_commit": true,
+    "allow_rebase_merge": false,
+    "has_issues": true,
+    "has_wiki": false,
+    "has_projects": false,
+    "has_discussions": false
+  },
+  "public_security": {
+    "secret_scanning": "enabled",
+    "secret_scanning_push_protection": "enabled",
+    "automated_security_fixes": false
+  }
+}

@@ -1,0 +1,11 @@
+# npm と NuGet の patch 更新は Dependabot ではなく、自前のワークフロー（patch-updates.yml）が行う。
+# NOTICE とロックファイルまで 1 つの PR に揃えるため。minor・major の更新は、人が必要に応じて行う。
+# ここに残すのは GitHub Actions の更新だけ（Actions の版は NOTICE・ロックファイルに関係しない）。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

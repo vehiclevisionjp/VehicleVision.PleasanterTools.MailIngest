@@ -1,0 +1,49 @@
+name: Dependency Audit
+on:
+  push:
+    branches: ['**']
+  schedule:
+    - cron: '30 0 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  npm-audit:
+    name: npm-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=moderate
+  nuget-audit:
+    name: nuget-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: 推移的依存を含めて検査する
+        shell: pwsh
+        run: ./scripts/nuget-vulnerable-check.ps1
+      - name: 検査結果を残す
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: NuGet 脆弱性検査結果
+          path: vulnerable.json
+          if-no-files-found: warn

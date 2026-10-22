@@ -1,0 +1,28 @@
+name: PR Title WIP Check
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review, converted_to_draft]
+    branches: [develop, master]
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  wip-title:
+    name: wip-title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: タイトルを検査する
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          TITLE="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq .title)"
+          if printf '%s' "$TITLE" | grep -Eqi '^[[:space:]]*(wip:|\[wip\])'; then
+            echo '::error::作業完了後に WIP: を外してください。'
+            exit 1
+          fi

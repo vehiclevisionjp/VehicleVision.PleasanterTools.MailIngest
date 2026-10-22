@@ -1,0 +1,34 @@
+<Project>
+  <!--
+    ランタイム・言語は Pleasanter 本体に揃える（本体の global.json は SDK 10.0.100 / net10.0）。
+    Pleasanter 側は Nullable=disable だが、本ツールは新規実装で本体コードを取り込まないため enable とする。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- .editorconfig の IDE 規則（{} の省略禁止など）を、ビルドで強制する -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- バージョンの単一情報源。各 .csproj へ個別に書かないこと。1.0.0 未満は互換を保証しない。 -->
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <!--
+    既定は AGPL-3.0-or-later。商用公開で AGPL と商用のデュアルライセンスにする手順は
+    _documents/ライセンス.md を参照する。切り替えるときは PackageLicenseExpression を
+    PackageLicenseFile へ置き換える（NuGet は LicenseRef-* を含む式を受け付けない）。
+  -->
+  <PropertyGroup>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Template</RepositoryUrl>
+  </PropertyGroup>
+</Project>

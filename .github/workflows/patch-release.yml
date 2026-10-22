@@ -1,0 +1,96 @@
+# patch 更新だけが溜まったら、既存の release-run.yml（patch・dry_run=false）を起動して、自動でリリースする。
+#
+# ■ 何をするか
+#   最後の**安定版**タグ（vX.Y.Z。プレリリースは数えない）より後の develop のコミットを調べる。
+#     - patch 更新（patch-updates.yml が作った「npm と NuGet の patch 更新」）のコミットが 1 件以上あり、
+#     - **それ以外のコミットが 1 件も無い**とき、release-run.yml を patch で起動する。
+#   差分が無ければ何もしない。人が入れた未リリースの変更が混ざっているときも、自動では出さない
+#   （それは人が内容を見て、release-run.yml を手で起動する）。
+#
+# ■ 動かない条件（どれかに当たれば、何もせず成功で終わる）
+#   - 安定版のタグがまだ無い（最初のリリースは人が行う）
+#   - release-run.yml が無い（このリポジトリはリリースを自動化していない）
+#   - patch 更新のコミットが無い／それ以外のコミットがある
+#   - release-run.yml が実行中、またはリリースの PR が開いたまま
+#
+# ■ 確認の扱い
+#   release-run.yml の acknowledge（破壊的変更・マイグレーション手順・依存のライセンスの確認）は、
+#   **patch 更新だけのときに限り、自動で true にする。** 同じ major.minor の中の更新で、PR の CI（NOTICE 検査・
+#   dependency-review を含む）が通っているため。人が入れた変更が混ざれば、そもそも起動しない。
+#
+# ■ 時刻
+#   patch-updates.yml（09:00 / 21:00 JST）の 2 時間後に動かす。PR のマージと develop への同期が済んでから見る。
+#   cron は UTC 固定。実行時刻は GitHub の混雑でずれることがある。
+name: Patch Release
+
+on:
+  schedule:
+    - cron: "0 2,14 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # release-run.yml を workflow_dispatch で起動するのに要る。GITHUB_TOKEN による workflow_dispatch は、
+  # 例外的に新しい実行を起こす（push や PR 作成と違い、連鎖の防止の対象外）
+  actions: write
+
+jobs:
+  patch-release:
+    name: patch-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: develop を取得する
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+          # 最後のタグと、それ以降のコミットを調べるので、履歴とタグが全部要る
+          fetch-depth: 0
+          submodules: false
+
+      - name: 自動リリースの対象か調べる
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          skip() { echo "release=false" >>"$GITHUB_OUTPUT"; echo "$1" >>"$GITHUB_STEP_SUMMARY"; echo "$1"; exit 0; }
+
+          [ -f .github/workflows/release-run.yml ] || skip "release-run.yml が無いので、自動リリースの対象外です。"
+
+          tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          [ -n "$tag" ] || skip "安定版のタグがまだ無いので、何もしません（最初のリリースは人が行います）。"
+
+          subjects="$(git log --no-merges --format='%s' "$tag..HEAD")"
+          [ -n "$subjects" ] || skip "$tag 以降のコミットが無いので、何もしません。"
+          others="$(printf '%s\n' "$subjects" | grep -v '^npm と NuGet の patch 更新' || true)"
+          if [ -n "$others" ]; then
+            skip "$tag 以降に patch 更新以外のコミットがあるので、自動では出しません（人が確認して release-run.yml を起動してください）。"
+          fi
+
+          running="$(gh run list --workflow release-run.yml --json status --jq '[.[] | select(.status != "completed")] | length')"
+          [ "$running" = 0 ] || skip "release-run.yml が実行中です。"
+          prs="$(gh pr list --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("release/"))] | length')"
+          [ "$prs" = 0 ] || skip "リリースの PR が開いたままです。"
+
+          count="$(printf '%s\n' "$subjects" | wc -l | tr -d ' ')"
+          echo "release=true" >>"$GITHUB_OUTPUT"
+          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+          echo "count=$count" >>"$GITHUB_OUTPUT"
+
+      - name: release-run.yml を patch で起動する
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.plan.outputs.tag }}
+          COUNT: ${{ steps.plan.outputs.count }}
+        run: |
+          set -euo pipefail
+          gh workflow run release-run.yml --ref develop -f bump=patch -f dry_run=false -f acknowledge=true
+          echo "$TAG 以降の patch 更新（${COUNT} 件）だけなので、release-run.yml を patch で起動しました。" >>"$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,20 @@
+name: PR Issue Link Check
+on:
+  pull_request:
+    types: [opened, edited, ready_for_review, synchronize]
+    branches: [develop, master]
+permissions:
+  contents: read
+jobs:
+  check:
+    name: issue-link
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: PR 本文を検査する
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if ! printf '%s' "$BODY" | grep -Eqi '(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+'; then
+            echo '::warning::PR 本文に Closes #N を書いて Issue と紐付けてください。'
+          fi

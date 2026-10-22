@@ -1,0 +1,122 @@
+# タグ・master・版整合性検査と dry-run の運用は Questionnaire から採用した。
+name: Release
+on:
+  push:
+    tags: ['v[0-9]*']
+  pull_request:
+    branches: [develop, master]
+    paths: ['.github/workflows/release*.yml', 'scripts/package.ps1', 'scripts/release-check.ps1', 'Directory.Build.props', 'package*.json']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '公開せず配布物の作成と検証だけを行う'
+        type: boolean
+        default: true
+      release_tag:
+        description: '対象タグ（vX.Y.Z）。dry-run は省略可'
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.release_tag || github.ref }}
+      - name: タグと版と公開対象を確認する
+        id: check
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
+          DRY_RUN: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        run: ./scripts/release-check.ps1 -Tag $env:RELEASE_TAG -DryRun:($env:DRY_RUN -eq 'true')
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run lint:md
+      - run: npm audit --audit-level=moderate
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build --no-restore -c Release
+      - name: NuGet の脆弱性を検査する
+        shell: pwsh
+        run: ./scripts/nuget-vulnerable-check.ps1
+      - name: 配布 ZIP と SHA-256 を作る
+        id: package
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.check.outputs.version }}
+        run: ./scripts/package.ps1 -Version $env:RELEASE_VERSION
+      - uses: actions/upload-artifact@v7
+        with:
+          name: リリース配布物
+          path: |
+            ${{ steps.package.outputs.zip }}
+            ${{ steps.package.outputs.checksum }}
+          if-no-files-found: error
+  publish:
+    name: release
+    needs: verify
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: リリース配布物
+          path: release-assets
+      - name: ZIP の整合性を確認する
+        working-directory: release-assets
+        run: sha256sum --check ./*.zip.sha256
+      - name: リリースを公開する
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          previous=$(git describe --tags --abbrev=0 "$RELEASE_TAG^" --match 'v[0-9]*' 2>/dev/null || true)
+          {
+            echo '## 変更内容'
+            echo
+            if [ -n "$previous" ]; then
+              git log --no-merges --format='- %s' "$previous..$RELEASE_TAG"
+            else
+              git log --no-merges --format='- %s' "$RELEASE_TAG"
+            fi
+            echo
+            echo '## 導入'
+            echo
+            echo "VehicleVision.PleasanterTools.Template-${RELEASE_TAG#v}-portable.zip を展開してください。.NET 10 ランタイムが必要です。手順は ZIP 内の _documents/ にあります。"
+            echo
+            echo 'AGPL-3.0-or-later。ソースは同じタグから取得できます。依存のライセンスは NOTICE を参照してください。'
+          } > release-notes.md
+          args=("$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" --notes-file release-notes.md)
+          if [ "$PRERELEASE" = 'true' ]; then args+=(--prerelease); fi
+          gh release create "${args[@]}" release-assets/*.zip release-assets/*.zip.sha256 LICENSE NOTICE

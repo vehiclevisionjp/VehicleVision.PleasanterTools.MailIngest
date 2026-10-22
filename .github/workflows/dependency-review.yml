@@ -1,0 +1,21 @@
+name: Dependency Review
+on:
+  pull_request:
+    branches: [develop, master]
+permissions:
+  contents: read
+jobs:
+  dependency-review:
+    name: dependency-review
+    # 依存レビューも public か GHAS 有効のリポジトリだけで使える（変数 CODEQL_ENABLED=true で有効）。
+    if: github.event.repository.visibility == 'public' || vars.CODEQL_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+          persist-credentials: false
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate

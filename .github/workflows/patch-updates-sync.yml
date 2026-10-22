@@ -1,0 +1,82 @@
+# patch 更新の PR が master へマージされたら、master → develop の同期 PR を作って、CI が通れば自動でマージする。
+#
+# **develop に入れないと、次のリリースで patch 更新が消える**（develop → master の PR が、古い版へ戻してしまう）。
+# 同期は、master の先頭から作業ブランチ（sync/master-to-develop-<短縮 SHA>）を切って、develop へ PR を出す
+# （master 自体を head にしない。マージ後の「ブランチ削除」が master を狙わないようにするため）。
+#
+# **マージコミットで入れる**（master の履歴を develop へ持ち込む。squash しない）。
+# **衝突したら自動では解けない。** PR にコメントを残して、人が見る。
+#
+# App のトークンで PR を作る理由と、要るもの（変数・シークレット）は patch-updates.yml と同じ。
+name: Patch Updates Sync
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync-develop:
+    name: sync-develop
+    # patch 更新の PR が、実際にマージされたときだけ
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'chore/patch-updates-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 短期の App トークンを発行する
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.MY_REPO_AUTOMATION_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MY_REPO_AUTOMATION_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: master を取得する
+        uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+          submodules: false
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: develop への同期 PR を作って、自動マージを設定する
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse --short=7 HEAD)"
+          branch="sync/master-to-develop-$sha"
+          git config user.name 'my-repo-automation-bot[bot]'
+          git config user.email 'noreply@github.com'
+          git fetch origin develop
+          if [ -z "$(git rev-list origin/develop..HEAD)" ]; then
+            echo "develop は master の内容を、すでに含んでいます。" >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git checkout -b "$branch"
+          git push origin "$branch"
+          url="$(gh pr create --base develop --head "$branch" \
+            --title "master の patch 更新を develop へ反映する" \
+            --body "patch 更新の PR（#${SOURCE_PR}）が master へマージされたので、develop へ反映する。develop に入れないと、次のリリースで patch 更新が古い版へ戻る。マージコミットで入れる。")"
+          echo "同期 PR: $url" >>"$GITHUB_STEP_SUMMARY"
+          gh pr merge "$url" --auto --merge
+          # 衝突していれば、自動では解けない。人が見るように、コメントを残す
+          for i in 1 2 3 4 5 6; do
+            state="$(gh pr view "$url" --json mergeable --jq .mergeable)"
+            [ "$state" != UNKNOWN ] && break
+            sleep 5
+          done
+          if [ "$state" = CONFLICTING ]; then
+            gh pr comment "$url" --body "⚠️ develop と衝突しています。自動では解けないので、手で解消してください（master の patch 更新の内容を develop に入れる PR です）。"
+            echo "::warning::develop との衝突があります。人が解消してください: $url"
+          fi

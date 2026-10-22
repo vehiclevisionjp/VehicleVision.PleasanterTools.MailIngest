@@ -1,0 +1,74 @@
+name: Create Release Tag
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'タグ（vX.Y.Z）。省略時は VersionPrefix を使う'
+        type: string
+        required: false
+      dry_run:
+        description: 'タグを作らず版だけを検証する'
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+jobs:
+  tag:
+    name: tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: 版と起動ブランチを確認する
+        id: check
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if ($env:DRY_RUN -ne 'true' -and $env:REF_NAME -ne 'master') { throw '実際のタグ作成は master から実行してください。' }
+          ./scripts/release-check.ps1 -Tag $env:RELEASE_TAG -DryRun
+      - name: 確定コミットの検査を確認する
+        if: ${{ !inputs.dry_run }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          $checks = gh api "repos/$env:REPOSITORY/commits/$env:COMMIT/check-runs?per_page=100" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw '検査結果を取得できません。' }
+          $required = @('build-test','instructions','Analyze (csharp)','nuget-audit','npm-audit')
+          foreach ($name in $required) {
+            $latest = $checks.check_runs | Where-Object name -eq $name | Sort-Object started_at -Descending | Select-Object -First 1
+            $ok = if ($name -like 'CodeQL*') { @('success','skipped') } else { @('success') }
+            if (!$latest -or $latest.conclusion -notin $ok) { throw "検査が成功していません: $name" }
+          }
+      - uses: actions/create-github-app-token@v3
+        if: ${{ !inputs.dry_run }}
+        id: app-token
+        with:
+          client-id: ${{ vars.MY_REPO_AUTOMATION_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MY_REPO_AUTOMATION_BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - name: App のトークンでタグを作成する
+        if: ${{ !inputs.dry_run }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          RELEASE_TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          # App の操作を契機に Release ワークフローが起動する。
+          gh api --method POST "repos/$env:REPOSITORY/git/refs" -f "ref=refs/tags/$env:RELEASE_TAG" -f "sha=$env:COMMIT"
+          if ($LASTEXITCODE -ne 0) { throw 'タグを作成できません。既存タグは変更しません。' }

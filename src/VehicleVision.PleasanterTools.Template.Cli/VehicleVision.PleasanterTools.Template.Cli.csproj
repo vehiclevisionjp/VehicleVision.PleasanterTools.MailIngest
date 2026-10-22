@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>VehicleVision.PleasanterTools.Template</AssemblyName>
+    <RootNamespace>VehicleVision.PleasanterTools.Template.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VehicleVision.PleasanterTools.Template.Core\VehicleVision.PleasanterTools.Template.Core.csproj" />
+  </ItemGroup>
+
+</Project>

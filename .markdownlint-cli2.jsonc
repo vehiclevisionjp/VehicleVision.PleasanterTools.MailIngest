@@ -1,0 +1,8 @@
+// Markdown の検査の設定（scripts/markdownlint.mjs が読む。VS Code の markdownlint 拡張も同じ書式）
+{
+  "config": {
+    "MD013": false,
+    "MD060": { "style": "compact" }
+  },
+  "ignores": ["_reference/**"]
+}

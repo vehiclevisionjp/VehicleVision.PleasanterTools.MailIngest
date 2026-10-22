@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VehicleVision.PleasanterTools.Template.Core/VehicleVision.PleasanterTools.Template.Core.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.Template.Cli/VehicleVision.PleasanterTools.Template.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VehicleVision.PleasanterTools.Template.Core.Tests/VehicleVision.PleasanterTools.Template.Core.Tests.csproj" />
+  </Folder>
+</Solution>

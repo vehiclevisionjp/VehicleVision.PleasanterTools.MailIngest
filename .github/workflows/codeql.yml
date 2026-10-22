@@ -1,0 +1,41 @@
+name: CodeQL
+on:
+  push:
+    branches: ['**']
+  schedule:
+    - cron: '17 20 * * 0'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  analyze:
+    name: Analyze (csharp)
+    # コードスキャンは public か、GHAS を有効にした private/internal だけで使える。後者はリポジトリ変数 CODEQL_ENABLED=true で有効にする。
+    if: github.event.repository.visibility == 'public' || vars.CODEQL_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet restore --locked-mode
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+          queries: security-extended
+      - run: dotnet build --no-restore -c Release
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:csharp

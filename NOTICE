@@ -1,0 +1,34 @@
+VehicleVision.PleasanterTools.Template
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+開発運用と Actions の構成、および指示同期・参照更新スクリプトは次を参考にしています。
+VehicleVision.PleasanterTools.Questionnaire
+VehicleVision.PleasanterTools.McpOAuthWrapper
+VehicleVision.PleasanterTools.IndexCreator
+いずれも vehiclevisionjp の AGPL-3.0-or-later リポジトリ（Questionnaire は商用とのデュアルライセンス）。
+参照日: 2026-10-12
+
+参照専用サブモジュール:
+Implem.Pleasanter / Implem Inc. / GNU AGPL v3
+https://github.com/Implem/Implem.Pleasanter
+サブモジュール内の LICENSE を参照。成果物には含めない。
+
+ランタイム:
+.NET — MIT
+https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+テスト用の直接依存（配布物には含めない）:
+Microsoft.NET.Test.Sdk — MIT
+https://github.com/microsoft/vstest/blob/main/LICENSE
+xunit — Apache-2.0
+https://github.com/xunit/xunit/blob/main/LICENSE
+xunit.runner.visualstudio — Apache-2.0
+https://github.com/xunit/visualstudio.xunit/blob/main/License.txt
+coverlet.collector — MIT
+https://github.com/coverlet-coverage/coverlet/blob/master/LICENSE
+
+推移的依存と実際の版は各プロジェクトの packages.lock.json に記録する。
+
+開発用（実行環境へ配布しない）:
+- markdownlint — MIT: https://github.com/DavidAnson/markdownlint/blob/main/LICENSE
+- KaTeX（markdownlint の推移的依存）— MIT: https://github.com/KaTeX/KaTeX/blob/main/LICENSE
