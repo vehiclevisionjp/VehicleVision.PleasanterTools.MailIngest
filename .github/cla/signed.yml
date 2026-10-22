@@ -1,3 +1,7 @@
 # 本リポジトリを対象とする同意を確認してから管理者が追記する。他リポジトリの署名は転記しない。
 # 形式: - login: GitHub名 / signed: YYYY-MM-DD / type: individual または corporate / note: 確認根拠
-signatories: []
+signatories:
+  - login: pmc-ko
+    signed: 2026-10-22
+    type: corporate
+    note: 株式会社ピー・エム・シー（従業員としての貢献）
