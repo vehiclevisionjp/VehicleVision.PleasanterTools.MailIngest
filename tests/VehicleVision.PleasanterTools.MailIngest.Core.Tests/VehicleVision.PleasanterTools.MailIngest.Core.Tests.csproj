@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\VehicleVision.PleasanterTools.Template.Core\VehicleVision.PleasanterTools.Template.Core.csproj" />
+    <ProjectReference Include="..\..\src\VehicleVision.PleasanterTools.MailIngest.Core\VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,7 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace VehicleVision.PleasanterTools.Template.Core.Tests;
+namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
 
 public sealed class PleasanterApiClientTests
 {

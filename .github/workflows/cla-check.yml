@@ -1,0 +1,38 @@
+name: CLA Check
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches: [develop, master]
+permissions:
+  contents: read
+concurrency:
+  group: cla-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  cla:
+    name: cla
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: base 側の署名一覧を取得する
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: PR 作者の署名を確認する
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+          case "$AUTHOR" in
+            'dependabot[bot]' | 'github-actions[bot]' | 'my-repo-automation-bot[bot]')
+              echo '自動更新 bot は署名確認の対象外です。'
+              exit 0
+              ;;
+          esac
+          if grep -Eq "^[[:space:]]*-[[:space:]]*login:[[:space:]]*${AUTHOR}[[:space:]]*$" .github/cla/signed.yml; then
+            echo '署名一覧への登録を確認しました。'
+          else
+            echo '::error::本リポジトリへの CLA 同意を確認できません。CONTRIBUTING.md を参照してください。'
+            exit 1
+          fi

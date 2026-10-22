@@ -1,8 +1,8 @@
 param([string]$OutputPath = 'vulnerable.json')
 $ErrorActionPreference = 'Stop'
-dotnet restore VehicleVision.PleasanterTools.Template.slnx --locked-mode
+dotnet restore VehicleVision.PleasanterTools.MailIngest.slnx --locked-mode
 if ($LASTEXITCODE -ne 0) { throw 'Package restore failed.' }
-$json = dotnet list VehicleVision.PleasanterTools.Template.slnx package --vulnerable --include-transitive --format json
+$json = dotnet list VehicleVision.PleasanterTools.MailIngest.slnx package --vulnerable --include-transitive --format json
 if ($LASTEXITCODE -ne 0) { throw 'Package audit failed.' }
 $text = $json -join "`n"
 [IO.File]::WriteAllText((Join-Path (Get-Location) $OutputPath), $text)

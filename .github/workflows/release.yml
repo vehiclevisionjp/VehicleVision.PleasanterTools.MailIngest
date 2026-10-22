@@ -113,7 +113,7 @@ jobs:
             echo
             echo '## 導入'
             echo
-            echo "VehicleVision.PleasanterTools.Template-${RELEASE_TAG#v}-portable.zip を展開してください。.NET 10 ランタイムが必要です。手順は ZIP 内の _documents/ にあります。"
+            echo "VehicleVision.PleasanterTools.MailIngest-${RELEASE_TAG#v}-portable.zip を展開してください。.NET 10 ランタイムが必要です。手順は ZIP 内の _documents/ にあります。"
             echo
             echo 'AGPL-3.0-or-later。ソースは同じタグから取得できます。依存のライセンスは NOTICE を参照してください。'
           } > release-notes.md

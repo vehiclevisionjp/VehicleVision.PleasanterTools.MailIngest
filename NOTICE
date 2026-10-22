@@ -1,5 +1,7 @@
-VehicleVision.PleasanterTools.Template
-SPDX-License-Identifier: AGPL-3.0-or-later
+VehicleVision.PleasanterTools.MailIngest
+SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
+デュアル提供の条件は LICENSING.md / LICENSE-COMMERCIAL.md を参照。
+MailIngest は初期化・設計段階。MailKit / MimeKit / Core パッケージはまだ依存に追加していない。
 
 開発運用と Actions の構成、および指示同期・参照更新スクリプトは次を参考にしています。
 VehicleVision.PleasanterTools.Questionnaire

@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace VehicleVision.PleasanterTools.Template.Core;
+namespace VehicleVision.PleasanterTools.MailIngest.Core;
 
 /// <summary>Pleasanter の応答をどう扱うか。</summary>
 /// <remarks>分類を誤ると、直らないものを再送し続けるか、直るものを捨てる。</remarks>

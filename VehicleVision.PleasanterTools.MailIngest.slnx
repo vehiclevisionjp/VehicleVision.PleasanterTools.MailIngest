@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VehicleVision.PleasanterTools.MailIngest.Core/VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.MailIngest.Cli/VehicleVision.PleasanterTools.MailIngest.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VehicleVision.PleasanterTools.MailIngest.Core.Tests/VehicleVision.PleasanterTools.MailIngest.Core.Tests.csproj" />
+  </Folder>
+</Solution>

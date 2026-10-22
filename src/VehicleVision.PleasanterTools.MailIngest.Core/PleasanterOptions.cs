@@ -1,4 +1,4 @@
-namespace VehicleVision.PleasanterTools.Template.Core;
+namespace VehicleVision.PleasanterTools.MailIngest.Core;
 
 /// <summary>Pleasanter の接続設定を呼び出し時に解決する。</summary>
 public interface IPleasanterOptionsProvider

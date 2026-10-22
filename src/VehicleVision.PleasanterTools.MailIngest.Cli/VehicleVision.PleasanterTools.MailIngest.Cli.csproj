@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>VehicleVision.PleasanterTools.MailIngest</AssemblyName>
+    <RootNamespace>VehicleVision.PleasanterTools.MailIngest.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Core\VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
+  </ItemGroup>
+
+</Project>

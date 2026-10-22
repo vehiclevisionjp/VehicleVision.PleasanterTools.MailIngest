@@ -1,8 +1,8 @@
 {
-  "name": "vehiclevision-pleasantertools-template",
+  "name": "vehiclevision-pleasantertools-mailingest",
   "private": true,
   "version": "0.1.0",
-  "license": "AGPL-3.0-or-later",
+  "license": "SEE LICENSE IN LICENSING.md",
   "engines": {
     "node": ">=24"
   },

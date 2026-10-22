@@ -1,0 +1,31 @@
+name: CLA への署名
+description: 法務確認後に本ツールへの貢献の許諾を届け出る
+title: "CLA への署名: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CLA.md は現在草案です。法務確認前は署名済みとして扱いません。
+        住所やメールアドレスなどの個人情報は記入しないでください。
+  - type: input
+    id: login
+    attributes:
+      label: GitHub ログイン名
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 署名種別
+      options:
+        - 個人
+        - 法人（法人の同意と代表権限も確認する）
+    validations:
+      required: true
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: 同意
+      options:
+        - label: 正式化された CLA.md を読み同意し、貢献を許諾する権利を持っています
+          required: true
