@@ -1,7 +1,9 @@
 # 商用ライセンス（LicenseRef-PMC-Commercial）
 
 対象ソフトウェアは **VehicleVision.PleasanterTools.MailIngest**。
-Copyright (C) PMC Co.,Ltd.
+Copyright (C) PMC Co., Ltd. IT Solution Div.
+
+本書で「当社」とは、株式会社ピー・エム・シー ITソリューション事業部を指します。
 
 本文書は [LICENSING.md](LICENSING.md) の選択肢 B の概要です。
 **正式な条件は個別契約によります。本文書は契約書ではなく、利用許諾そのものではありません。**
@@ -14,5 +16,5 @@ Pleasanter 本体は参照専用で、本ソフトウェアにも商用許諾の
 
 ## 契約窓口
 
-PMC Co.,Ltd.。正式な連絡先は未確定です。
+株式会社ピー・エム・シー ITソリューション事業部。正式な連絡先は未確定です。
 契約を開始する前に窓口と権利主体を確定します。現時点で商用契約を締結可能とは案内しません。

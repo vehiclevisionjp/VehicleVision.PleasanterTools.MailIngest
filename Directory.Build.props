@@ -27,6 +27,9 @@
     NuGet は LicenseRef-* を含む式を受け付けないため、ライセンスファイルを指定する。
   -->
   <PropertyGroup>
+    <Company>PMC Co., Ltd. IT Solution Div.</Company>
+    <Authors>PMC Co., Ltd. IT Solution Div.</Authors>
+    <Copyright>Copyright (C) PMC Co., Ltd. IT Solution Div.</Copyright>
     <PackageLicenseFile>LICENSING.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.MailIngest</RepositoryUrl>
   </PropertyGroup>
