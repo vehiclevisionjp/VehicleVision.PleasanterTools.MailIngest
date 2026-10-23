@@ -1,14 +1,16 @@
 # ライセンスについて（デュアルライセンス）
 
 対象ソフトウェアは **VehicleVision.PleasanterTools.MailIngest**。
-Copyright (C) PMC Co.,Ltd.
+Copyright (C) PMC Co., Ltd. IT Solution Div.
+
+本書で「当社」とは、株式会社ピー・エム・シー ITソリューション事業部を指します。
 
 利用者は次のいずれかを選択できます。
 
 | 選択 | ライセンス | 条件 |
 | --- | --- | --- |
 | A | AGPL-3.0-or-later | [LICENSE](LICENSE) の条件に従う |
-| B | PMC 商用ライセンス | [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) と個別契約に従う |
+| B | 株式会社ピー・エム・シー ITソリューション事業部の商用ライセンス | [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) と個別契約に従う |
 
 SPDX 表記: `AGPL-3.0-or-later OR LicenseRef-PMC-Commercial`。
 
