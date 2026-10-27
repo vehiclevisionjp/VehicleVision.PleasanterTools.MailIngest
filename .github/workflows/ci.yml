@@ -66,4 +66,5 @@ jobs:
           submodules: false
           persist-credentials: false
       - run: bash scripts/sync-agents.sh --check
+      - run: bash scripts/test-sync-reference.sh
       - run: bash scripts/reference-isolation-check.sh
