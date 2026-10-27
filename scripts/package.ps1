@@ -16,11 +16,11 @@ foreach ($file in @('LICENSE', 'LICENSING.md', 'LICENSE-COMMERCIAL.md', 'NOTICE'
     Copy-Item -LiteralPath (Join-Path $repoRoot $file) -Destination $appDirectory
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot '_documents') -Destination $appDirectory -Recurse
-$forbidden = Get-ChildItem -LiteralPath $appDirectory -Recurse -File | Where-Object {
-    $_.Name -in @('appsettings.Local.json', '.env') -or
-    $_.Extension -in @('.pfx', '.pem', '.key', '.pdb') -or $_.FullName -match '[/\\]_reference[/\\]'
+$forbidden = Get-ChildItem -LiteralPath $appDirectory -Recurse -File -Force | Where-Object {
+    $_.Name -in @('appsettings.Local.json', '.env', '.gitmodules', '.git') -or
+    $_.Extension -in @('.pfx', '.pem', '.key', '.pdb') -or $_.FullName -match '[/\\](_reference|\.git)[/\\]'
 }
-if ($forbidden) { throw '配布対象外の設定・秘密・参照ソース・pdb が検出されました。' }
+if ($forbidden) { throw '配布対象外の設定・秘密・参照ソース・Git メタデータ・pdb が検出されました。' }
 $commit = git -C $repoRoot rev-parse HEAD
 if ($LASTEXITCODE -ne 0) { throw 'ソースのコミットを確認できません。' }
 Set-Content -LiteralPath (Join-Path $appDirectory 'BUILD.txt') -Value @(

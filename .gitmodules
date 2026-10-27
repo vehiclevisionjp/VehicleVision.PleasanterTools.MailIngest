@@ -1,5 +1,0 @@
-[submodule "_reference/Implem.Pleasanter"]
-	path = _reference/Implem.Pleasanter
-	url = https://github.com/Implem/Implem.Pleasanter.git
-	branch = main
-	shallow = true
