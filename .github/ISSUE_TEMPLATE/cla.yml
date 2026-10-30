@@ -6,6 +6,7 @@ body:
     attributes:
       value: |
         住所やメールアドレスなどの個人情報は記入しないでください。
+        **法人として署名する場合は、この Issue に加えて、署名者の権限を確認できるメールを `group.development+cla@vehiclevision.jp` へ送ってください**（詳しくは CONTRIBUTING.md の「CLA へ署名する」）。
   - type: input
     id: login
     attributes:
