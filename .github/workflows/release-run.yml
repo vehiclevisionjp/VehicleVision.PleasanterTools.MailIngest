@@ -20,7 +20,7 @@ jobs:
   tag:
     name: tag
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,13 +45,25 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           COMMIT: ${{ github.sha }}
         run: |
-          $checks = gh api "repos/$env:REPOSITORY/commits/$env:COMMIT/check-runs?per_page=100" | ConvertFrom-Json
-          if ($LASTEXITCODE -ne 0) { throw '検査結果を取得できません。' }
+          # master への push の CI が終わる前に動かしても、検査が揃うまで待つ（失敗が見えたら待たずに止まる）
+          $deadline = (Get-Date).AddMinutes(15)
           $required = @('build-test','instructions','Analyze (csharp)','nuget-audit','npm-audit')
-          foreach ($name in $required) {
-            $latest = $checks.check_runs | Where-Object name -eq $name | Sort-Object started_at -Descending | Select-Object -First 1
-            $ok = if ($name -like 'CodeQL*') { @('success','skipped') } else { @('success') }
-            if (!$latest -or $latest.conclusion -notin $ok) { throw "検査が成功していません: $name" }
+          while ($true) {
+            $checks = gh api "repos/$env:REPOSITORY/commits/$env:COMMIT/check-runs?per_page=100" | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { throw '検査結果を取得できません。' }
+            $pending = @()
+            $failed = @()
+            foreach ($name in $required) {
+              $latest = $checks.check_runs | Where-Object name -eq $name | Sort-Object started_at -Descending | Select-Object -First 1
+              $ok = if ($name -like 'CodeQL*') { @('success','skipped') } else { @('success') }
+              if (!$latest -or $latest.status -ne 'completed') { $pending += $name }
+              elseif ($latest.conclusion -notin $ok) { $failed += $name }
+            }
+            if ($failed.Count -gt 0) { throw "検査が成功していません: $($failed -join ', ')" }
+            if ($pending.Count -eq 0) { break }
+            if ((Get-Date) -gt $deadline) { throw "検査が 15 分待っても終わりません: $($pending -join ', ')" }
+            Write-Host "検査の完了を待つ: $($pending -join ', ')"
+            Start-Sleep -Seconds 20
           }
       - uses: actions/create-github-app-token@v3
         if: ${{ !inputs.dry_run }}
