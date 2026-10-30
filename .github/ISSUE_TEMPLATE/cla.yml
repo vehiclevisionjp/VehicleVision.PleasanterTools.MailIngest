@@ -5,7 +5,6 @@ body:
   - type: markdown
     attributes:
       value: |
-        CLA.md は現在草案です。法務確認前は署名済みとして扱いません。
         住所やメールアドレスなどの個人情報は記入しないでください。
   - type: input
     id: login
