@@ -1,4 +1,5 @@
 VehicleVision.PleasanterTools.MailIngest
+Copyright (C) PMC Co., Ltd. IT Solution Div.
 SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
 デュアル提供の条件は LICENSING.md / LICENSE-COMMERCIAL.md を参照。
 MailIngest は初期化・設計段階。MailKit / MimeKit / Core パッケージはまだ依存に追加していない。
