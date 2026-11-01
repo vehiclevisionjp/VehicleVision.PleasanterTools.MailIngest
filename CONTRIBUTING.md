@@ -37,4 +37,4 @@ Issue・PR・コミット・文書は日本語で書いてください。
 未署名ならチェックが失敗し、案内コメントが付きます。
 
 Dependabot・GitHub Actions・`my-repo-automation-bot[bot]` の自動更新 PR は対象外です。
-管理者の確認手順と、必須化前の配置条件は [開発運用](_documents/開発運用.md) にあります。
+判定の実装は `.github/workflows/cla-check.yml` にあります。
