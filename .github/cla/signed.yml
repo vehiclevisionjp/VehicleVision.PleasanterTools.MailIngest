@@ -1,5 +1,14 @@
-# 本リポジトリを対象とする同意を確認してから管理者が追記する。他リポジトリの署名は転記しない。
-# 形式: - login: GitHub名 / signed: YYYY-MM-DD / type: individual または corporate / note: 確認根拠
+# CLA へ署名した人の一覧。
+# 管理者が CLA の同意と許諾権限を確認してから、PR で追記する。初期状態では署名者を登録しない。
+# 署名の効力は、このリポジトリのツールに対するもの（CLA.md の「本ソフトウェア」）。他のツールへは及ばない。
+#
+# 書き方
+#   - login: GitHub のログイン名
+#     signed: 署名を受け取った日（YYYY-MM-DD）
+#     type: individual | corporate
+#     note: 法人名・受領日・社内の管理番号など（法人の署名者の権限をメールで確認した場合。メールの内容は書かない）
+#
+# 一覧から外しても、それ以前の貢献に対する許諾は有効（CLA.md の 2.1）。
 signatories:
   - login: pmc-ko
     signed: 2026-10-22
