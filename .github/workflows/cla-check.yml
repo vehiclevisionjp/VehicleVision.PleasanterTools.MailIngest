@@ -1,38 +1,93 @@
+# Questionnaire の方式。PR のコードは実行せず、base 側の署名一覧だけを見る。
+# 外部の CLA サービスへ作者の情報を渡さない。
 name: CLA Check
+
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
-    branches: [develop, master]
+    branches:
+      - develop
+      - master
+
 permissions:
   contents: read
+  pull-requests: write
+
 concurrency:
   group: cla-check-${{ github.event.pull_request.number }}
   cancel-in-progress: true
+
 jobs:
   cla:
     name: cla
+    # internal の Template 自身は対象外。新しい公開リポジトリではそのまま動く。
+    if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: base 側の署名一覧を取得する
+      - name: base 側を取り出す
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
-      - name: PR 作者の署名を確認する
+
+      - name: 署名を確かめる
+        id: check
         env:
           AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
+          list='.github/cla/signed.yml'
+          if [ ! -f "$list" ]; then
+            echo "::error title=署名の一覧が無い::$list が見つかりません"
+            exit 1
+          fi
+
+          # bot もジョブを skip せず成功を報告する。glob の文字クラスにしない。
           case "$AUTHOR" in
             'dependabot[bot]' | 'github-actions[bot]' | 'my-repo-automation-bot[bot]')
-              echo '自動更新 bot は署名確認の対象外です。'
+              echo 'signed=true' >> "$GITHUB_OUTPUT"
+              echo "$AUTHOR は bot なので CLA の確認を省きます。"
               exit 0
               ;;
           esac
-          if grep -Eq "^[[:space:]]*-[[:space:]]*login:[[:space:]]*${AUTHOR}[[:space:]]*$" .github/cla/signed.yml; then
-            echo '署名一覧への登録を確認しました。'
-          else
-            echo '::error::本リポジトリへの CLA 同意を確認できません。CONTRIBUTING.md を参照してください。'
-            exit 1
+
+          if grep -Eq "^[[:space:]]*-[[:space:]]*login:[[:space:]]*${AUTHOR}[[:space:]]*$" "$list"; then
+            echo 'signed=true' >> "$GITHUB_OUTPUT"
+            echo '署名を確認しました。'
+            exit 0
           fi
+
+          echo 'signed=false' >> "$GITHUB_OUTPUT"
+          echo "::error title=CLA が未署名です::$AUTHOR は署名の一覧にありません。CONTRIBUTING.md の「CLA へ署名する」を見てください。"
+          exit 1
+
+      - name: 未署名なら案内する
+        if: failure() && steps.check.outputs.signed == 'false'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const marker = '<!-- cla-check -->';
+            const author = context.payload.pull_request.user.login;
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            };
+            const comments = await github.paginate(github.rest.issues.listComments, params);
+            if (comments.some((comment) =>
+              comment.user?.type === 'Bot' && (comment.body ?? '').includes(marker))) {
+              return;
+            }
+            await github.rest.issues.createComment({
+              ...params,
+              body:
+                `${marker}\n@${author} さん、貢献をありがとうございます。\n\n` +
+                '**取り込む前に CLA への署名をお願いします。**\n\n' +
+                'AGPL と商用のデュアルライセンスで提供するため、貢献を再許諾する権利を確認するためです。\n\n' +
+                '1. [CLA.md](../blob/develop/CLA.md) を読む\n' +
+                '2. 「CLA への署名」の Issue を立てる\n' +
+                '3. 管理者が確認して署名一覧へ追記します\n\n' +
+                '**会社の業務として貢献する場合は、法人用の署名も要ります。**\n\n' +
+                '詳しくは [CONTRIBUTING.md](../blob/develop/CONTRIBUTING.md) を見てください。',
+            });
