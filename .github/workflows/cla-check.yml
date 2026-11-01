@@ -84,7 +84,9 @@ jobs:
               body:
                 `${marker}\n@${author} さん、貢献をありがとうございます。\n\n` +
                 '**取り込む前に CLA への署名をお願いします。**\n\n' +
+                // license:begin cla-intro=dual
                 'AGPL と商用のデュアルライセンスで提供するため、貢献を再許諾する権利を確認するためです。\n\n' +
+                // license:end cla-intro
                 '1. [CLA.md](../blob/develop/CLA.md) を読む\n' +
                 '2. 「CLA への署名」の Issue を立てる\n' +
                 '3. 管理者が確認して署名一覧へ追記します\n\n' +
