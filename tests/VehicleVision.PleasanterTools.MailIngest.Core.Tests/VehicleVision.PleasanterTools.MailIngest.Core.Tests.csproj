@@ -13,10 +13,12 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="VehicleVision.PleasanterTools.Core.Data" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\VehicleVision.PleasanterTools.MailIngest.Core\VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
+    <ProjectReference Include="..\..\src\VehicleVision.PleasanterTools.MailIngest.Data\VehicleVision.PleasanterTools.MailIngest.Data.csproj" />
   </ItemGroup>
 
 </Project>
