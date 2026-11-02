@@ -176,6 +176,12 @@ JSON の大小文字は API の指定名を保つ。Web 既定の camelCase 化�
 
 ## 6. 応答検証・再試行・API 回数制限
 
+実装状況（#52）: `PleasanterApiClient` が、`StatusCode`・作成時の `Id`・一覧の構造の検査、応答 2 MiB の上限、
+`Retry-After`（秒・HTTP-date）の解釈、`Offset` / `PageSize` の送信、予約キーの完全一致検索、リダイレクトの無効化
+（`CreateHttpMessageHandler`）を実装した。作成・更新は再送せず、反映済みの可能性を `MayHaveBeenApplied` で返す。
+**すべてフェイクの HTTP での試験のみで、実機の Pleasanter では未検証**（`StatusCode` が常に返ること、フィルター形式など）。
+再試行・ページ送り・回数制限の待機は状態管理の所在が未決（#53）のため未実装。
+
 HTTP 200 だけでは成功にしない。JSON と `StatusCode`、作成時の有効な Id、
 一覧時の構造を検査する。HTML 応答・空 JSON・型不一致は異常として分類する。
 API 応答の Message / Body はログしない。呼出し元が保存したキー・ID で照合する。

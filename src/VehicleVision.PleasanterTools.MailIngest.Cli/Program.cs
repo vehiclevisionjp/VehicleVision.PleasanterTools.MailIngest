@@ -10,7 +10,7 @@ if (args.Length != 1 || args[0] != "check")
 
 try
 {
-    using var httpClient = new HttpClient();
+    using var httpClient = new HttpClient(PleasanterApiClient.CreateHttpMessageHandler());
     var client = new PleasanterApiClient(httpClient, PleasanterOptions.FromEnvironment());
     var connected = await client.CheckConnectionAsync();
     Console.WriteLine(connected ? "Connected." : "Connection failed.");
