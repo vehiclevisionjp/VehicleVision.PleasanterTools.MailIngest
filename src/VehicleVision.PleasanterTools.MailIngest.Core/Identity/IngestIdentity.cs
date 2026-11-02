@@ -63,6 +63,29 @@ public static class ExternalKey
         hasher.Add(messageId);
         return hasher.Finish();
     }
+
+    /// <summary>Message-ID 欠落時の代替キーの方式版。Message-ID のキーとは別の名前空間になる。</summary>
+    public const string RawVersion = "mailingest-external-key-raw-v1";
+
+    /// <summary>
+    /// Message-ID が欠落・不正なメールの代替キー（#53 の決定: RAW ハッシュの別名前空間）。
+    /// 接続先識別子・siteId・sourceId と、RAW 全体の SHA-256 から作る。
+    /// RAW が変わった再配送（ヘッダを書き換えたメール）は同じメールと判断できない。
+    /// </summary>
+    /// <param name="rawSha256">RAW 全体の SHA-256（小文字 16 進 64 桁）。</param>
+    public static string CreateFromRawHash(string destinationId, long siteId, string sourceId, string rawSha256)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(destinationId);
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(rawSha256);
+
+        using var hasher = new CanonicalHasher(RawVersion);
+        hasher.Add(destinationId);
+        hasher.Add(siteId.ToString(CultureInfo.InvariantCulture));
+        hasher.Add(sourceId);
+        hasher.Add(rawSha256);
+        return hasher.Finish();
+    }
 }
 
 /// <summary>同じメールかどうかを見る内容ハッシュ。DB にだけ保持し、Pleasanter へは送らない。</summary>

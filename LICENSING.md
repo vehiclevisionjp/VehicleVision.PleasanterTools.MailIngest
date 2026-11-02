@@ -97,7 +97,7 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 当社の共通部品 Core のうち Core.Data（`VehicleVision.PleasanterTools.Core.Data`）を依存に追加しました。
 DB の接続とマイグレーションの基盤で、状態の保存に使います。`core` の節と、Core.Data が SqlClient を経由して
 SNI.runtime を推移的に持つための `sni` の節を `on` にしています。
-MailKit / MimeKit は、設計上は利用する予定です（[`_documents/アーキテクチャ方針.md`](_documents/アーキテクチャ方針.md)）が、
+MimeKit（MIT）を依存に追加しました。MailKit は、設計上は利用する予定です（[`_documents/アーキテクチャ方針.md`](_documents/アーキテクチャ方針.md)）が、
 **現時点では依存に追加していません**（`packages.lock.json` に含まれません）。
 <!-- license:end deps-note -->
 

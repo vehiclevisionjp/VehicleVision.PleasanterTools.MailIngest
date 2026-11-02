@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/VehicleVision.PleasanterTools.MailIngest.Core/VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
     <Project Path="src/VehicleVision.PleasanterTools.MailIngest.Data/VehicleVision.PleasanterTools.MailIngest.Data.csproj" />
+    <Project Path="src/VehicleVision.PleasanterTools.MailIngest.Mail/VehicleVision.PleasanterTools.MailIngest.Mail.csproj" />
     <Project Path="src/VehicleVision.PleasanterTools.MailIngest.Cli/VehicleVision.PleasanterTools.MailIngest.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">
