@@ -8,6 +8,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Core\VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
+    <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Data\VehicleVision.PleasanterTools.MailIngest.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 【暫定・要判断（#62）】Core.Data が FluentMigrator.Runner 経由で推移的に伴う、寛容ライセンスでない 2 つ
+         （IBM 独自許諾の Net.IBM.Data.Db2、IDPL の FirebirdSql.Data.FirebirdClient）を配布物へ入れない。
+         本アプリは SQLite・SQL Server・PostgreSQL・MySQL しか使わない。恒久策は Core.Data 側の見直し（#62 参照） -->
+    <PackageReference Include="Net.IBM.Data.Db2" Version="9.0.0.300" ExcludeAssets="all" />
+    <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="10.3.3" ExcludeAssets="all" />
   </ItemGroup>
 
 </Project>

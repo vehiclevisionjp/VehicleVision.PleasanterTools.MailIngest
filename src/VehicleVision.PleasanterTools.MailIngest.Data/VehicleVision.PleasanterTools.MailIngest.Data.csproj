@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Core\VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DB の基盤（接続・暗号化の設定・DbTime・マイグレーションと排他・SqlDialect の汎用部分）。Core のパッケージ。
+         **Core が持つ依存（Dapper・FluentMigrator・DB ドライバなど）は、ここで宣言し直さない**（版のずれの原因になる）。Core 経由で受け取る -->
+    <PackageReference Include="VehicleVision.PleasanterTools.Core.Data" Version="0.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VehicleVision.PleasanterTools.MailIngest.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DB の基盤は Core.Data（NuGet）へ集約した。名前空間を暗黙に使えるようにする -->
+    <Using Include="VehicleVision.PleasanterTools.Core.Data" />
+  </ItemGroup>
+
+</Project>
