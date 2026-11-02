@@ -14,8 +14,8 @@
 Core.Data の `AppDatabase("mailingest", ...)` を再利用し、アプリ固有の表を作る。
 初期は 1 台・SQLite の単発 CLI を推奨し、RDBMS / 複数ホストは次段階へ分ける。
 Core のデュアル許諾と SNI 推移依存の扱いは、2026-10-30 の決定（Core 現状維持、SNI 許容）に従う。
-ただし本ツールはまだ Core を依存に追加しておらず（ライセンス文書の正本は `core=off`・`sni=off`）、
-採用するときに `core`・`sni` を `on` にして再確認するため、採用確定ではない。
+2026-11-02 に Core.Data の採用を決定し、実装した（#62。ライセンス文書は `core=on`・`sni=on`）。
+状態は SQLite の `mailingest.db`（`IngestItems`・`MailLocations`・`SourceRuns`）。
 ライセンス上の条件が満たせない場合は設計レビューへ戻し、無断で別 DB 実装を増やさない。
 
 ## 2. 外部キーとハッシュ

@@ -2,6 +2,18 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "FirebirdSql.Data.FirebirdClient": {
+        "type": "Direct",
+        "requested": "[10.3.3, )",
+        "resolved": "10.3.3",
+        "contentHash": "iAj21eY5u7obZumA3NAVZf8ynu7Z6lslkU3V4W8Mm9Mowa4gcadT2a+LIMwAovDIg8iS8RpCSzIzFdKFCdakTg=="
+      },
+      "Net.IBM.Data.Db2": {
+        "type": "Direct",
+        "requested": "[9.0.0.300, )",
+        "resolved": "9.0.0.300",
+        "contentHash": "VnDZNywrwulE7IsWnvXe7IlZ5aGsHTReQ7Ln36XhuAyeu8Ko0ITf39/CXfvnb+HpcFZOK7IFCcSKCqj8+zvGZA=="
+      },
       "VehicleVision.PleasanterTools.Core.Data": {
         "type": "Direct",
         "requested": "[0.1.0, )",
@@ -27,11 +39,6 @@
         "type": "Transitive",
         "resolved": "2.1.89",
         "contentHash": "1VjFE664wnxvuhlgP8kS4PeFFF4jqD3VkbIHW6Zlc52zuibgcz5ICnIHcQXlTp6pURpPNGLV0ZpNe5x9KePJnA=="
-      },
-      "FirebirdSql.Data.FirebirdClient": {
-        "type": "Transitive",
-        "resolved": "10.3.3",
-        "contentHash": "iAj21eY5u7obZumA3NAVZf8ynu7Z6lslkU3V4W8Mm9Mowa4gcadT2a+LIMwAovDIg8iS8RpCSzIzFdKFCdakTg=="
       },
       "FluentMigrator": {
         "type": "Transitive",
@@ -414,11 +421,6 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
         }
-      },
-      "Net.IBM.Data.Db2": {
-        "type": "Transitive",
-        "resolved": "9.0.0.300",
-        "contentHash": "VnDZNywrwulE7IsWnvXe7IlZ5aGsHTReQ7Ln36XhuAyeu8Ko0ITf39/CXfvnb+HpcFZOK7IFCcSKCqj8+zvGZA=="
       },
       "Npgsql": {
         "type": "Transitive",

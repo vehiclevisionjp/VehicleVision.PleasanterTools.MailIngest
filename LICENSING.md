@@ -94,20 +94,53 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 `packages.lock.json` を置いているリポジトリでは、推移的依存と実際の版もそこで確認できます。
 
 <!-- license:begin deps-note=free -->
-MailKit / MimeKit と、当社の共通部品 Core（`VehicleVision.PleasanterTools.Core.*`）は、設計上は利用する予定です
-（[`_documents/アーキテクチャ方針.md`](_documents/アーキテクチャ方針.md)）が、
+当社の共通部品 Core のうち Core.Data（`VehicleVision.PleasanterTools.Core.Data`）を依存に追加しました。
+DB の接続とマイグレーションの基盤で、状態の保存に使います。`core` の節と、Core.Data が SqlClient を経由して
+SNI.runtime を推移的に持つための `sni` の節を `on` にしています。
+MailKit / MimeKit は、設計上は利用する予定です（[`_documents/アーキテクチャ方針.md`](_documents/アーキテクチャ方針.md)）が、
 **現時点では依存に追加していません**（`packages.lock.json` に含まれません）。
-追加する作業で、`core` の節（Core.Data が SqlClient を経由して SNI.runtime を推移的に持つときは `sni` の節も）を `on` に切り替え、
-採用版と推移依存のライセンスを再確認します。
 <!-- license:end deps-note -->
 
 これは意図的な制約です。**コピーレフト系（GPL / AGPL / SSPL 等）の依存が 1 つでも入ると、
 商用ライセンスでの提供ができなくなります。** 依存を追加する際は必ずライセンスを確認してください。
 
-<!-- license:begin sni=off -->
+<!-- license:begin sni=on -->
+### 例外: Microsoft.Data.SqlClient.SNI.runtime
+
+**例外として**、SQL Server に接続する Windows 向けの配置物には、
+`Microsoft.Data.SqlClient.SNI.runtime`（ネイティブのライブラリ。Microsoft Software License Terms
+「MICROSOFT.DATA.SQLCLIENT.SNI LIBRARY」）が含まれます。MIT・BSD・Apache-2.0 ではない
+Microsoft 独自の許諾です。**選択肢 A・B のどちらでも**、この部品には次の条件が付きます
+（出典: パッケージ 7.1.0 内の `LICENSE.txt` 3 項（a）・5 項・6 項・11〜12 項、参照日 2026-10-27）。
+
+- 本ソフトウェアの一部としてのみ頒布します。**単体では頒布・再配布しません**
+- 頒布先（再頒布する者と、エンドユーザー）は、この許諾と**同程度以上に部品を保護する条件**に同意するものとします。
+  特に、逆コンパイル・逆アセンブルの禁止、Microsoft の表示の削除・変更の禁止、
+  単体での共有・公開・貸与・提供の禁止、輸出管理法令の遵守が含まれます
+- 部品は無保証（現状のまま）で、Microsoft が負う賠償は直接損害の 5 米ドルまでです
+- 頒布者は、部品の頒布・利用に関する請求から、Microsoft を補償し、防御し、損害を与えないものとします
+  （改変していない部品だけに基づく請求を除く）
+- 部品のソースコードを、**開示や改変の自由を条件とするライセンス（AGPL など）の対象にして頒布しません**。
+  本ソフトウェアの AGPL は当社が著作権を持つ部分に及び、この部品はバイナリのまま同梱する別の著作物です
+
+**これらは Questionnaire で決めた取り扱い（2026-10-20）と同じ整理です。
+上の整理は法的な助言ではありません。**
+条件の正本は、パッケージ内の `LICENSE.txt` です。
 <!-- license:end sni -->
 
-<!-- license:begin core=off -->
+<!-- license:begin core=on -->
+### 例外: 当社の共通部品 Core（AGPL／商用のデュアルライセンス）
+
+本ソフトウェアは、当社の共通部品 Core（`VehicleVision.PleasanterTools.Core.*` の NuGet パッケージ）を利用します。
+Core は寛容ライセンスではなく、**AGPL-3.0-or-later と商用ライセンスのデュアルライセンス**で提供されます。
+著作権者は本ソフトウェアと同じ、当社です。
+
+- **A（AGPL）を選ぶ場合**: Core も AGPL で利用します
+- **B（商用）を選ぶ場合**: 本ソフトウェアの商用ライセンスは、本ソフトウェアに組み込まれた Core を含みます。
+  Core を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、個別に契約します
+
+Core の条件は、次を参照してください。
+[Core の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core/blob/develop/LICENSING.md)
 <!-- license:end core -->
 
 ## 貢献を受け取るとき
