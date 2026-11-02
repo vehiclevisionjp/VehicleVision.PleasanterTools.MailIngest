@@ -239,6 +239,14 @@
           "Microsoft.Data.SqlClient": "6.0.1"
         }
       },
+      "MailKit": {
+        "type": "Transitive",
+        "resolved": "4.18.1",
+        "contentHash": "EssBsnKHvIcH1QpqqsVUEWAlAHI3dkGXJpKAzSNJ8PGjClNynSo9bRkT68jVZkxhREm0Z51Dwu3127f4WfIiRg==",
+        "dependencies": {
+          "MimeKit": "4.18.1"
+        }
+      },
       "Microsoft.Bcl.Cryptography": {
         "type": "Transitive",
         "resolved": "9.0.18",
@@ -622,6 +630,7 @@
       "vehiclevision.pleasantertools.mailingest.mail": {
         "type": "Project",
         "dependencies": {
+          "MailKit": "[4.18.1, )",
           "MimeKit": "[4.18.1, )",
           "System.Security.Cryptography.Pkcs": "[10.0.14, )",
           "VehicleVision.PleasanterTools.MailIngest.Core": "[0.1.0, )"
