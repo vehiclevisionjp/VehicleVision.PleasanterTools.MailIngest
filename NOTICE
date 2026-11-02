@@ -2,7 +2,7 @@ VehicleVision.PleasanterTools.MailIngest
 Copyright (C) PMC Co., Ltd. IT Solution Div.
 SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
 デュアル提供の条件は LICENSING.md / LICENSE-COMMERCIAL.md を参照。
-MailIngest は初期化・設計段階。MailKit / MimeKit / Core パッケージはまだ依存に追加していない。
+MailIngest は Core.Data（状態 DB）を依存に追加した。MailKit / MimeKit はまだ依存に追加していない。
 
 開発運用と Actions の構成、および指示同期・参照更新スクリプトは次を参考にしています。
 VehicleVision.PleasanterTools.Questionnaire
@@ -15,6 +15,26 @@ VehicleVision.PleasanterTools.IndexCreator
 Implem.Pleasanter / Implem Inc. / GNU AGPL v3
 https://github.com/Implem/Implem.Pleasanter
 サブモジュール内の LICENSE を参照。成果物には含めない。
+
+サードパーティソフトウェア（配布物に含む）。参照日 2026-11-02。名称 / バージョン / ライセンス / 入手元
+  VehicleVision.PleasanterTools.Core.Data 0.1.0 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
+    （DB の基盤。接続・DbTime・マイグレーションと排他・SqlDialect の汎用部分。下の Dapper・FluentMigrator・DB ドライバは、これが推移的に伴う）
+  Dapper 2.1.89 / Apache-2.0 / https://www.nuget.org/packages/Dapper
+  FluentMigrator 8.0.1 ほか FluentMigrator.* 8.0.1 / Apache-2.0 / https://www.nuget.org/packages/FluentMigrator
+  Microsoft.Data.Sqlite 10.0.14 / MIT / https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.14
+    （Apache-2.0 の SQLitePCLRaw 2.1.13 と、パブリックドメインの SQLite を推移的に伴う）
+  Microsoft.Data.SqlClient 7.1.1 / MIT / https://www.nuget.org/packages/Microsoft.Data.SqlClient
+  Microsoft.Data.SqlClient.SNI.runtime 7.1.0 / Microsoft Software License Terms（MICROSOFT.DATA.SQLCLIENT.SNI LIBRARY。**MIT・BSD・Apache-2.0 ではない独自の許諾**） / https://www.nuget.org/packages/Microsoft.Data.SqlClient.SNI.runtime/7.1.0
+    （Microsoft.Data.SqlClient が推移的に伴う、Windows 向けのネイティブ SNI。パッケージ内の LICENSE.txt、参照日 2026-11-02。
+      **再頒布の条件**: アプリの一部としてのみ頒布する（単体で頒布しない）／頒布先に、逆コンパイルの禁止・著作権表示の保全・
+      単体での再配布の禁止・保証の否認・責任の制限・輸出規制の遵守など、この許諾と同程度に守る条件へ同意させる／
+      アプリの頒布・利用に関する請求から Microsoft を補償する（改変していない SNI だけに基づく請求を除く）。
+      **2026-10-30 の決定**: 条件を明記したうえで許容し、「依存は寛容ライセンスに限る」の例外として扱う。
+      上の条件は、LICENSING.md（例外の節）と LICENSE-COMMERCIAL.md（頒布先に守っていただく条件）へ反映した）
+  Npgsql 10.0.3 / PostgreSQL License（BSD 系の寛容ライセンス） / https://www.nuget.org/packages/Npgsql
+  MySqlConnector 2.6.2 / MIT / https://www.nuget.org/packages/MySqlConnector
+  System.Security.Cryptography.Pkcs 10.0.14 / MIT / https://www.nuget.org/packages/System.Security.Cryptography.Pkcs
+  Microsoft.IdentityModel.* 8.16.0、Microsoft.Extensions.* 8.0.0〜10.0.14、ほか Microsoft の System.* / MIT（推移的。実際の版は packages.lock.json）
 
 ランタイム:
 .NET — MIT
