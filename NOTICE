@@ -17,10 +17,10 @@ https://github.com/Implem/Implem.Pleasanter
 サブモジュール内の LICENSE を参照。成果物には含めない。
 
 サードパーティソフトウェア（配布物に含む）。参照日 2026-11-02。名称 / バージョン / ライセンス / 入手元
-  VehicleVision.PleasanterTools.Core.Data 0.1.0 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
-    （DB の基盤。接続・DbTime・マイグレーションと排他・SqlDialect の汎用部分。下の Dapper・FluentMigrator・DB ドライバは、これが推移的に伴う）
+  VehicleVision.PleasanterTools.Core.Data 0.1.1 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
+    （DB の基盤。接続・DbTime・マイグレーションと排他・SqlDialect の汎用部分。下の Dapper・FluentMigrator・DB ドライバは、これが推移的に伴う。IBM Db2・Firebird のドライバは伴わない）
   Dapper 2.1.89 / Apache-2.0 / https://www.nuget.org/packages/Dapper
-  FluentMigrator 8.0.1 ほか FluentMigrator.* 8.0.1 / Apache-2.0 / https://www.nuget.org/packages/FluentMigrator
+  FluentMigrator 8.0.1 ほか FluentMigrator.Runner.Core・Runner.SQLite・Runner.SqlServer・Runner.Postgres・Runner.MySql など FluentMigrator.* 8.0.1 / Apache-2.0 / https://www.nuget.org/packages/FluentMigrator
   Microsoft.Data.Sqlite 10.0.14 / MIT / https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.14
     （Apache-2.0 の SQLitePCLRaw 2.1.13 と、パブリックドメインの SQLite を推移的に伴う）
   Microsoft.Data.SqlClient 7.1.1 / MIT / https://www.nuget.org/packages/Microsoft.Data.SqlClient
