@@ -158,6 +158,14 @@ DotNetClient の条件は、次を参照してください。
 [DotNetClient の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient/blob/develop/LICENSING.md)
 <!-- license:end dotnetclient -->
 
+## 当社の共通部品との組み合わせ
+
+VehicleVision.PleasanterTools の各ツールと、当社の共通部品（Core・DotNetClient）を組み合わせて使う場合は、
+**呼ぶ側のツールと、呼ばれる側の共通部品を、一体として扱います。**
+共通部品は、呼ぶ側のツールの一部として、そのツールの利用条件（AGPL または商用ライセンス）で提供します。
+当社のツール以外（外部のアプリケーション）が共通部品を使う場合と、共通部品を単体で使う場合は、
+各共通部品の `LICENSING.md` の条件によります。
+
 ## 貢献を受け取るとき
 
 **デュアルライセンスを保つには、貢献者からの許諾が要る。**
