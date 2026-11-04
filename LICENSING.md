@@ -98,6 +98,7 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 DB の接続とマイグレーションの基盤で、状態の保存に使います。`core` の節と、Core.Data が SqlClient を経由して
 SNI.runtime を推移的に持つための `sni` の節を `on` にしています。
 MimeKit と MailKit（いずれも MIT）を依存に追加しました。
+共通部品 DotNetClient（LGPL／AGPL／商用の 3 層）は、Pleasanter の Web API クライアントとして NuGet で利用します（下の例外の節）。
 <!-- license:end deps-note -->
 
 これは意図的な制約です。**コピーレフト系（GPL / AGPL / SSPL 等）の依存が 1 つでも入ると、
@@ -142,7 +143,19 @@ Core の条件は、次を参照してください。
 [Core の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core/blob/develop/LICENSING.md)
 <!-- license:end core -->
 
-<!-- license:begin dotnetclient=off -->
+<!-- license:begin dotnetclient=on -->
+### 例外: 当社の共通部品 DotNetClient（LGPL／AGPL／商用のトリプルライセンス）
+
+本ソフトウェアは、当社の共通部品 DotNetClient（`VehicleVision.PleasanterTools.DotNetClient` の NuGet パッケージ）を利用します。
+DotNetClient は寛容ライセンスではなく、**LGPL-3.0-or-later・AGPL-3.0-or-later・商用ライセンスの 3 層**で提供されます。
+著作権者は本ソフトウェアと同じ、当社です。
+
+- **A（AGPL）を選ぶ場合**: DotNetClient も AGPL で利用します
+- **B（商用）を選ぶ場合**: 本ソフトウェアの商用ライセンスは、本ソフトウェアに組み込まれた DotNetClient を含みます。
+  DotNetClient を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、DotNetClient の条件によります
+
+DotNetClient の条件は、次を参照してください。
+[DotNetClient の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient/blob/develop/LICENSING.md)
 <!-- license:end dotnetclient -->
 
 ## 貢献を受け取るとき

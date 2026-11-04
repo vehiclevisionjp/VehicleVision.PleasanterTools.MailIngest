@@ -2,18 +2,20 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
+using VehicleVision.PleasanterTools.DotNetClient;
 
 namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
 
-public sealed class PleasanterApiClientTests
+public sealed class PleasanterGatewayTests
 {
     private static readonly PleasanterOptions Options = new()
     {
         BaseUrl = "https://example.invalid/",
         ApiKey = "secret-key",
+        DetectServerVersion = false,
     };
 
-    private static PleasanterApiClient ClientFor(StubHandler handler) => new(new HttpClient(handler), Options);
+    private static PleasanterGateway ClientFor(StubHandler handler) => new(handler, Options);
 
     private static readonly IReadOnlyDictionary<string, object?> Record = new Dictionary<string, object?>
     {
@@ -28,7 +30,7 @@ public sealed class PleasanterApiClientTests
     [InlineData(HttpStatusCode.InternalServerError, PleasanterErrorKind.Transient)]
     [InlineData(HttpStatusCode.MovedPermanently, PleasanterErrorKind.Permanent)]
     public void Classify_はステータスを扱い方へ分類する(HttpStatusCode status, PleasanterErrorKind expected)
-        => Assert.Equal(expected, PleasanterApiClient.Classify(status));
+        => Assert.Equal(expected, PleasanterGateway.Classify(status));
 
     [Fact]
     public async Task CreateAsync_は_ApiKey_と_ApiVersion_をボディへ載せる()
@@ -80,7 +82,8 @@ public sealed class PleasanterApiClientTests
     {
         var response = await ClientFor(new StubHandler(HttpStatusCode.OK, body)).CreateAsync(1, Record);
 
-        Assert.Equal(PleasanterErrorKind.InvalidResponse, response.ErrorKind);
+        Assert.Equal(PleasanterErrorKind.Unknown, response.ErrorKind);
+        Assert.True(response.IsInvalidResponse);
         Assert.True(response.MayHaveBeenApplied);
         Assert.False(response.IsSuccess);
     }
@@ -93,7 +96,8 @@ public sealed class PleasanterApiClientTests
     {
         var response = await ClientFor(new StubHandler(HttpStatusCode.OK, body)).CreateAsync(1, Record);
 
-        Assert.Equal(PleasanterErrorKind.InvalidResponse, response.ErrorKind);
+        Assert.Equal(PleasanterErrorKind.Unknown, response.ErrorKind);
+        Assert.True(response.IsInvalidResponse);
     }
 
     [Fact]
@@ -162,11 +166,11 @@ public sealed class PleasanterApiClientTests
 
         Assert.Equal(
             TimeSpan.FromSeconds(30),
-            PleasanterApiClient.ParseRetryAfter(new RetryConditionHeaderValue(now.AddSeconds(30)), now));
+            PleasanterGateway.ParseRetryAfter(new RetryConditionHeaderValue(now.AddSeconds(30)), now));
         Assert.Equal(
             TimeSpan.Zero,
-            PleasanterApiClient.ParseRetryAfter(new RetryConditionHeaderValue(now.AddSeconds(-30)), now));
-        Assert.Null(PleasanterApiClient.ParseRetryAfter(null, now));
+            PleasanterGateway.ParseRetryAfter(new RetryConditionHeaderValue(now.AddSeconds(-30)), now));
+        Assert.Null(PleasanterGateway.ParseRetryAfter(null, now));
     }
 
     [Fact]
@@ -219,7 +223,8 @@ public sealed class PleasanterApiClientTests
     {
         var response = await ClientFor(new StubHandler(HttpStatusCode.OK, body)).GetAsync(1, offset: 0);
 
-        Assert.Equal(PleasanterErrorKind.InvalidResponse, response.ErrorKind);
+        Assert.Equal(PleasanterErrorKind.Unknown, response.ErrorKind);
+        Assert.True(response.IsInvalidResponse);
         Assert.False(response.MayHaveBeenApplied);
     }
 
@@ -229,7 +234,8 @@ public sealed class PleasanterApiClientTests
         var response = await ClientFor(new StubHandler(HttpStatusCode.OK, ListBody(0, 100, 500, 100)))
             .GetAsync(1, offset: 100);
 
-        Assert.Equal(PleasanterErrorKind.InvalidResponse, response.ErrorKind);
+        Assert.Equal(PleasanterErrorKind.Unknown, response.ErrorKind);
+        Assert.True(response.IsInvalidResponse);
     }
 
     [Fact]
@@ -247,27 +253,19 @@ public sealed class PleasanterApiClientTests
     }
 
     [Fact]
-    public async Task 応答が上限を超えたら異常とする()
+    public async Task 応答が上限を超えたら読まず_Unknown_とし_作成は反映済みの可能性を示す()
     {
-        var big = new string('a', PleasanterApiClient.MaxResponseBytes + 1);
+        var big = new string('a', PleasanterGateway.MaxResponseBytes + 1);
 
-        var response = await ClientFor(new StubHandler(HttpStatusCode.OK, big)).GetAsync(1, offset: 0);
+        var read = await ClientFor(new StubHandler(HttpStatusCode.OK, big)).GetAsync(1, offset: 0);
+        var write = await ClientFor(new StubHandler(HttpStatusCode.OK, big)).CreateAsync(1, Record);
 
-        Assert.Equal(PleasanterErrorKind.InvalidResponse, response.ErrorKind);
-        Assert.Null(response.Body);
-    }
-
-    [Fact]
-    public async Task 別ホストへ転送された応答は成功にしない()
-    {
-        var handler = new StubHandler(HttpStatusCode.OK, """{"Id":1,"StatusCode":200}""")
-        {
-            FinalUri = new Uri("https://other.invalid/api/items/1/Create"),
-        };
-
-        var response = await ClientFor(handler).CreateAsync(1, Record);
-
-        Assert.Equal(PleasanterErrorKind.InvalidResponse, response.ErrorKind);
+        Assert.Equal(PleasanterErrorKind.Unknown, read.ErrorKind);
+        Assert.Null(read.StatusCode);
+        Assert.Null(read.Body);
+        Assert.False(read.MayHaveBeenApplied);
+        Assert.Equal(PleasanterErrorKind.Unknown, write.ErrorKind);
+        Assert.True(write.MayHaveBeenApplied);
     }
 
     [Fact]
@@ -283,11 +281,105 @@ public sealed class PleasanterApiClientTests
     }
 
     [Fact]
-    public void 標準のハンドラーはリダイレクトを追わない()
+    public void 標準のハンドラーはリダイレクトを追わず_Cookie_を持たない()
     {
-        using var handler = Assert.IsType<SocketsHttpHandler>(PleasanterApiClient.CreateHttpMessageHandler());
+        using var handler = PleasanterHttp.CreateHandler();
 
         Assert.False(handler.AllowAutoRedirect);
+        Assert.False(handler.UseCookies);
+    }
+
+    [Fact]
+    public async Task 本番用の組み方は_307_を別ホストへ再送しない()
+    {
+        using var other = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        other.Start();
+        using var first = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        first.Start();
+        var otherPort = ((IPEndPoint)other.LocalEndpoint).Port;
+        var firstPort = ((IPEndPoint)first.LocalEndpoint).Port;
+
+        var server = Task.Run(async () =>
+        {
+            using var tcp = await first.AcceptTcpClientAsync();
+            var stream = tcp.GetStream();
+            var buffer = new byte[16 * 1024];
+            _ = await stream.ReadAsync(buffer);
+            var reply = $"HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:{otherPort}/x\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(reply));
+        });
+
+        using var gateway = PleasanterGateway.Create(new PleasanterOptions
+        {
+            BaseUrl = $"http://127.0.0.1:{firstPort}",
+            ApiKey = "secret-key",
+            DetectServerVersion = false,
+        });
+        var response = await gateway.CreateAsync(1, Record);
+        await server;
+
+        Assert.Equal(PleasanterErrorKind.Permanent, response.ErrorKind);
+        Assert.Equal(307, response.StatusCode);
+        Assert.False(other.Pending());
+    }
+
+    [Theory]
+    [InlineData("http://example.invalid")]
+    [InlineData("https://user:pass@example.invalid")]
+    [InlineData("https://example.invalid/?a=b")]
+    [InlineData("https://example.invalid/#x")]
+    [InlineData("ftp://example.invalid")]
+    public async Task BaseUrl_が不正なら送らず_ArgumentException_にし_API_キーも_URL_も出さない(string baseUrl)
+    {
+        var handler = new StubHandler();
+        var gateway = new PleasanterGateway(
+            handler,
+            new PleasanterOptions { BaseUrl = baseUrl, ApiKey = "secret-key", DetectServerVersion = false });
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => gateway.CreateAsync(1, Record));
+
+        Assert.Equal(0, handler.CallCount);
+        Assert.DoesNotContain("secret-key", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.invalid", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ループバックの_http_は使える()
+    {
+        var gateway = new PleasanterGateway(
+            new StubHandler(HttpStatusCode.OK, """{"StatusCode":200}"""),
+            new PleasanterOptions { BaseUrl = "http://localhost:8080", ApiKey = "k", DetectServerVersion = false });
+
+        Assert.True(await gateway.CheckConnectionAsync());
+    }
+
+    [Fact]
+    public async Task 呼び出しは版の問い合わせをせず_パスの大文字小文字も従来のまま()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, """{"Id":1,"StatusCode":200}""");
+
+        await new PleasanterGateway(handler, new PleasanterOptions { BaseUrl = "https://example.invalid", ApiKey = "k" })
+            .CreateAsync(9, Record);
+
+        Assert.Equal(1, handler.CallCount);
+        Assert.Equal("https://example.invalid/api/items/9/Create", handler.RequestUri);
+    }
+
+    [Fact]
+    public void 環境変数から接続設定を作り_足りなければ_InvalidOperationException()
+    {
+        var options = PleasanterEnvironment.FromEnvironment(name => name switch
+        {
+            "PLEASANTER_BASE_URL" => "https://example.invalid",
+            "PLEASANTER_API_KEY" => "k",
+            "PLEASANTER_SERVER_VERSION" => "not-a-version",
+            _ => null,
+        });
+
+        Assert.Equal("https://example.invalid", options.BaseUrl);
+        Assert.False(options.DetectServerVersion);
+        Assert.Null(options.ServerVersion);
+        Assert.Throws<InvalidOperationException>(() => PleasanterEnvironment.FromEnvironment(_ => null));
     }
 
     [Fact]
@@ -328,8 +420,6 @@ public sealed class PleasanterApiClientTests
 
         public RetryConditionHeaderValue? RetryAfter { get; init; }
 
-        public Uri? FinalUri { get; init; }
-
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
@@ -346,7 +436,7 @@ public sealed class PleasanterApiClientTests
             var response = new HttpResponseMessage(status)
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json"),
-                RequestMessage = FinalUri is null ? request : new HttpRequestMessage(HttpMethod.Post, FinalUri),
+                RequestMessage = request,
             };
             response.Headers.RetryAfter = RetryAfter;
             return response;

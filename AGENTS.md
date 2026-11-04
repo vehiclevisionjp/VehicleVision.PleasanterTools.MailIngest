@@ -24,7 +24,7 @@ Claude Code はローカルで `CLAUDE.md` を読み、そこから同じ参照�
 6. 本ツールは AGPL と商用のデュアル。Pleasanter 本体は参照専用で、必要時に取得し Git では追跡しない。
    コピー・流用・リンク・プロジェクト参照・配布は禁止。取り込むと商用側を提供できない。
 7. API キーとパスワードはコード・設定ファイル・ログ・公開ファイル・ブラウザへ出さない。環境変数か Git 管理外の設定から読む。未検証を動作済みとして説明しない。
-8. デュアル提供を維持するため、依存 OSS は寛容ライセンス（MIT / BSD 系 / Apache-2.0）のみ。追加時に一次情報で確認し、NOTICE とロックファイルを更新する。
+8. 本ツールはデュアルライセンス（AGPL-3.0-or-later ＋ 商用。[LICENSING.md](LICENSING.md)）で提供する。依存 OSS は商用側も提供できる寛容ライセンス（MIT / BSD 系 / Apache-2.0）を基本とし、例外（共通 Core.Data は AGPL／商用）は採用前にレビューする。追加時にライセンスを一次情報で確認し、NOTICE とロックファイルを更新する。ただし、当社の共通部品（Core・DotNetClient）は、VehicleVision.PleasanterTools のツールが組み込む場合に呼び出し元と一体として扱うため例外とする（LICENSING.md の `core`・`dotnetclient`）。
 9. 作業前に [共通指示](.github/copilot-instructions.md) の全文を読む。外部仕様は一次情報で確認し、出典と参照日を残す。
 10. README は利用者向けの取扱説明・製品説明の入口にする。ビルド・テスト・CI・エージェント運用など開発者向けの説明は [開発ガイド](_documents/開発ガイド.md) と [開発運用](_documents/開発運用.md) に分離する。
 11. `if` / `else` / `for` / `foreach` / `while` / `using` / `lock` などの本文の `{}` を省略しない（1 行で済む本文も同じ）。C# は `.editorconfig` とビルドで、TypeScript・Svelte は ESLint の `curly` で強制する。

@@ -57,14 +57,14 @@ static async Task<int> CheckAsync()
 {
     try
     {
-        using var httpClient = new HttpClient(PleasanterApiClient.CreateHttpMessageHandler());
-        var client = new PleasanterApiClient(httpClient, PleasanterOptions.FromEnvironment());
-        var connected = await client.CheckConnectionAsync();
+        using var gateway = PleasanterGateway.Create(PleasanterEnvironment.FromEnvironment());
+        var connected = await gateway.CheckConnectionAsync();
         Console.WriteLine(connected ? "Connected." : "Connection failed.");
         return connected ? 0 : 1;
     }
-    catch (InvalidOperationException ex)
+    catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
     {
+        // 環境変数なし、または BaseUrl 不正（DotNetClient の検査。https のみ・ループバックだけ http 可）。文言に URL・API キーは含まれない
         Console.Error.WriteLine(ex.Message);
         return 2;
     }
