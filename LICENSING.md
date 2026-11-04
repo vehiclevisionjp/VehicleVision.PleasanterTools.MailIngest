@@ -142,6 +142,9 @@ Core の条件は、次を参照してください。
 [Core の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core/blob/develop/LICENSING.md)
 <!-- license:end core -->
 
+<!-- license:begin dotnetclient=off -->
+<!-- license:end dotnetclient -->
+
 ## 貢献を受け取るとき
 
 **デュアルライセンスを保つには、貢献者からの許諾が要る。**

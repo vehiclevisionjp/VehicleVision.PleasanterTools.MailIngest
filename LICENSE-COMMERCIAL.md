@@ -52,6 +52,9 @@ Core は AGPL-3.0-or-later と商用ライセンスのデュアルライセン�
 - Core を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、個別に契約します
 <!-- license:end core-terms -->
 
+<!-- license:begin dotnetclient-terms=off -->
+<!-- license:end dotnetclient-terms -->
+
 <!-- license:begin sni-terms=on -->
 ## 頒布先に守っていただく条件
 
