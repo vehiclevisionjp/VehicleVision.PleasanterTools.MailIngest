@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using DotNetClientOptions = VehicleVision.PleasanterTools.DotNetClient.PleasanterOptions;
 
 namespace VehicleVision.PleasanterTools.MailIngest.Core.Configuration;
 
@@ -115,7 +116,7 @@ public static partial class IngestConfigParser
             baseUrl = ValidateBaseUrl(baseUrlText, reader.Join("baseUrl"), issues);
         }
 
-        var apiVersion = reader.Decimal("apiVersion", required: false, PleasanterOptions.DefaultApiVersion)!.Value;
+        var apiVersion = reader.Decimal("apiVersion", required: false, DotNetClientOptions.DefaultApiVersion)!.Value;
         if (apiVersion <= 0)
         {
             issues.Error(reader.Join("apiVersion"), "OutOfRange", "正の数値が必要。");

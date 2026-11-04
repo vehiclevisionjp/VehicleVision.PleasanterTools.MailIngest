@@ -8,7 +8,7 @@ POP3 と IMAP でメールを受信し、差出人・件名・本文・日時な
 **ロジック層・状態 DB・メールの取得までを実装した段階です。取り込み実行（`run`）、結果不明の照合、受信後の既読・移動・削除は未実装です。**
 実装済み（単体試験と、テスト用サーバ GreenMail に対する統合試験。Pleasanter 実機・実際のメールサーバは未検証）:
 設定 JSON の読込み・検証（`validate`）、正規化メールの列への対応づけと API レコードの組立、重複排除の外部キー・ハッシュ、
-標準 API クライアントの応答検証、状態 DB（SQLite。`migrate` / `migrate-status`）、
+Pleasanter 標準 API の呼び出し（NuGet の DotNetClient ＋ 応答の検査）、状態 DB（SQLite。`migrate` / `migrate-status`）、
 MIME の正規化（MimeKit）、IMAP / POP3 の非破壊の取得（パスワード認証。`Tls` / `StartTls` / `None`、証明書は `Strict` のみ）。
 未実装: 取り込み実行コマンド（`run`）、結果不明の照合、受信後の既読・移動・削除、OAuth2（Microsoft 365・Gmail は現状使えません）、
 証明書の例外（`AllowUntrusted` / `Pinned`）、添付の転送。

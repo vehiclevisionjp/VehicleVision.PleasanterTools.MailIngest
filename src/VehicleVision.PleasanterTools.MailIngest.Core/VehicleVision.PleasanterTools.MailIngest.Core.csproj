@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <!-- Pleasanter の Web API クライアント。LGPL・AGPL・商用の 3 層（自社。NOTICE・_documents/アーキテクチャ方針.md） -->
+    <PackageReference Include="VehicleVision.PleasanterTools.DotNetClient" Version="0.2.0" />
     <InternalsVisibleTo Include="VehicleVision.PleasanterTools.MailIngest.Core.Tests" />
   </ItemGroup>
 

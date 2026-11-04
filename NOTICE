@@ -40,6 +40,7 @@ https://github.com/Implem/Implem.Pleasanter
     （IMAP / POP3 の受信。nuspec が license expression MIT、参照日 2026-11-02。MimeKit と同じ版）
   BouncyCastle.Cryptography 2.7.0 / MIT / https://github.com/bcgit/bc-csharp
     （MimeKit が推移的に伴う。nuspec が license expression MIT、参照日 2026-11-02）
+  VehicleVision.PleasanterTools.DotNetClient 0.2.0 / LGPL-3.0-or-later OR AGPL-3.0-or-later OR 商用（自社。Pleasanter の Web API クライアント。https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient ）
   Microsoft.IdentityModel.* 8.16.0、Microsoft.Extensions.* 8.0.0〜10.0.14、ほか Microsoft の System.* / MIT（推移的。実際の版は packages.lock.json）
 
 テスト用の外部ツール（依存ではなく、配布物に含まない）:
@@ -48,6 +49,13 @@ GreenMail / Apache-2.0 / https://github.com/greenmail-mail-test/greenmail（受�
 ランタイム:
 .NET — MIT
 https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+Pleasanter Web API クライアント（Core が NuGet で参照し、CLI の配布物にも含まれる）:
+VehicleVision.PleasanterTools.DotNetClient 0.2.0 — LGPL-3.0-or-later OR AGPL-3.0-or-later OR 商用（LicenseRef-PMC-Commercial）の 3 層（自社）
+https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient
+NuGet では PackageLicenseFile で LICENSING.md を表示する（SPDX の式は持たない）。推移的依存は無い（packages.lock.json）。
+本リポジトリ（AGPL ＋ 商用のデュアル）の A（AGPL）では DotNetClient も AGPL で、B（商用）では組み込まれた DotNetClient を商用ライセンスに含める。
+VehicleVision.PleasanterTools の各ツールが組み込む場合は、呼び出し元と一体として扱う（LICENSING.md の「例外: 当社の共通部品 DotNetClient」、Template #114・#117）。
 
 テスト用の直接依存（配布物には含めない）:
 Microsoft.NET.Test.Sdk — MIT
