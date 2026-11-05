@@ -4,9 +4,9 @@
     "net10.0": {
       "VehicleVision.PleasanterTools.DotNetClient": {
         "type": "Direct",
-        "requested": "[0.2.0, )",
-        "resolved": "0.2.0",
-        "contentHash": "s0iBREzBbK3i79Eo15LYZqwDiRTBtw5olqecHbyghr7RYFcGINQDtL31e01kg1gzqfyLaXpztc9wGxBgTfqW8g=="
+        "requested": "[0.4.0, )",
+        "resolved": "0.4.0",
+        "contentHash": "1NC14fthCATUbNejOzGYQDXNiIN6kkwfPUTh/z4uCXAfnG289CE3hQWJEQZc29Texsn47w0h099ZTzQOT1EFVQ=="
       }
     }
   }

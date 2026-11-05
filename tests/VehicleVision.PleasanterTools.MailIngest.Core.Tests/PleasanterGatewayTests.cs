@@ -22,16 +22,6 @@ public sealed class PleasanterGatewayTests
         ["Title"] = "t",
     };
 
-    [Theory]
-    [InlineData(HttpStatusCode.OK, PleasanterErrorKind.None)]
-    [InlineData(HttpStatusCode.Unauthorized, PleasanterErrorKind.Unauthorized)]
-    [InlineData(HttpStatusCode.BadRequest, PleasanterErrorKind.Permanent)]
-    [InlineData(HttpStatusCode.TooManyRequests, PleasanterErrorKind.Transient)]
-    [InlineData(HttpStatusCode.InternalServerError, PleasanterErrorKind.Transient)]
-    [InlineData(HttpStatusCode.MovedPermanently, PleasanterErrorKind.Permanent)]
-    public void Classify_はステータスを扱い方へ分類する(HttpStatusCode status, PleasanterErrorKind expected)
-        => Assert.Equal(expected, PleasanterGateway.Classify(status));
-
     [Fact]
     public async Task CreateAsync_は_ApiKey_と_ApiVersion_をボディへ載せる()
     {
@@ -109,6 +99,37 @@ public sealed class PleasanterGatewayTests
         Assert.True(response.IsSuccess);
     }
 
+    [Theory]
+    [InlineData(401, PleasanterErrorKind.Unauthorized)]
+    [InlineData(400, PleasanterErrorKind.Permanent)]
+    [InlineData(403, PleasanterErrorKind.Permanent)]
+    [InlineData(404, PleasanterErrorKind.Permanent)]
+    [InlineData(301, PleasanterErrorKind.Permanent)]
+    [InlineData(408, PleasanterErrorKind.Transient)]
+    [InlineData(429, PleasanterErrorKind.Transient)]
+    [InlineData(500, PleasanterErrorKind.Transient)]
+    [InlineData(503, PleasanterErrorKind.Transient)]
+    public async Task HTTP_200_でも_JSON_の_StatusCode_が200以外なら_その値で分類し_本文の値を報告する(int bodyStatus, PleasanterErrorKind expected)
+    {
+        var response = await ClientFor(new StubHandler(HttpStatusCode.OK, "{\"StatusCode\":" + bodyStatus + "}")).UpdateAsync(1, Record);
+
+        Assert.Equal(expected, response.ErrorKind);
+        Assert.Equal(bodyStatus, response.StatusCode);
+        Assert.Equal(bodyStatus, response.ApiStatusCode);
+        Assert.False(response.IsInvalidResponse);
+        Assert.Equal(expected == PleasanterErrorKind.Transient, response.MayHaveBeenApplied);
+    }
+
+    [Fact]
+    public async Task HTTP_が200以外なら_本文の_StatusCode_ではなく_HTTP_の状態で分類する()
+    {
+        var response = await ClientFor(new StubHandler(HttpStatusCode.InternalServerError, """{"StatusCode":404}""")).UpdateAsync(1, Record);
+
+        Assert.Equal(PleasanterErrorKind.Transient, response.ErrorKind);
+        Assert.Equal(500, response.StatusCode);
+        Assert.Null(response.ApiStatusCode);
+    }
+
     [Fact]
     public async Task HTTP_200_でも_JSON_の_StatusCode_が失敗なら失敗として分類する()
     {
@@ -159,18 +180,78 @@ public sealed class PleasanterGatewayTests
         Assert.Equal(TimeSpan.FromSeconds(7), response.RetryAfter);
     }
 
-    [Fact]
-    public void Retry_After_は_HTTP_date_も相対時間にし_過去は_0_にする()
+    [Theory]
+    [InlineData("7", 7)]
+    [InlineData("0", 0)]
+    [InlineData("3600", 3600)] // 上限の丸めは DotNetClient では行わない（待つかどうかは呼び出し側が決める）
+    public async Task Retry_After_の秒指定を相対時間で返す(string header, int seconds)
     {
-        var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var handler = new StubHandler(HttpStatusCode.TooManyRequests, "{}") { RetryAfterRaw = header };
 
-        Assert.Equal(
-            TimeSpan.FromSeconds(30),
-            PleasanterGateway.ParseRetryAfter(new RetryConditionHeaderValue(now.AddSeconds(30)), now));
-        Assert.Equal(
-            TimeSpan.Zero,
-            PleasanterGateway.ParseRetryAfter(new RetryConditionHeaderValue(now.AddSeconds(-30)), now));
-        Assert.Null(PleasanterGateway.ParseRetryAfter(null, now));
+        var response = await ClientFor(handler).GetAsync(1, cancellationToken: CancellationToken.None);
+
+        Assert.Equal(TimeSpan.FromSeconds(seconds), response.RetryAfter);
+    }
+
+    [Theory]
+    [InlineData("-5")]
+    [InlineData("abc")]
+    [InlineData("")]
+    public async Task Retry_After_が不正なら_null_にする(string header)
+    {
+        var handler = new StubHandler(HttpStatusCode.TooManyRequests, "{}") { RetryAfterRaw = header };
+
+        var response = await ClientFor(handler).GetAsync(1, cancellationToken: CancellationToken.None);
+
+        Assert.Null(response.RetryAfter);
+    }
+
+    [Fact]
+    public async Task Retry_After_が無ければ_null_にする()
+    {
+        var response = await ClientFor(new StubHandler(HttpStatusCode.TooManyRequests, "{}"))
+            .GetAsync(1, cancellationToken: CancellationToken.None);
+
+        Assert.Null(response.RetryAfter);
+    }
+
+    [Fact]
+    public async Task Retry_After_の_HTTP_date_は相対時間にする()
+    {
+        var date = DateTimeOffset.UtcNow.AddSeconds(120);
+        var handler = new StubHandler(HttpStatusCode.TooManyRequests, "{}") { RetryAfterRaw = date.ToString("R", System.Globalization.CultureInfo.InvariantCulture) };
+
+        var response = await ClientFor(handler).GetAsync(1, cancellationToken: CancellationToken.None);
+
+        Assert.NotNull(response.RetryAfter);
+        Assert.InRange(response.RetryAfter!.Value, TimeSpan.FromSeconds(100), TimeSpan.FromSeconds(121));
+    }
+
+    [Fact]
+    public async Task Retry_After_の過去の_HTTP_date_は_0_にする()
+    {
+        var date = DateTimeOffset.UtcNow.AddSeconds(-120);
+        var handler = new StubHandler(HttpStatusCode.TooManyRequests, "{}") { RetryAfterRaw = date.ToString("R", System.Globalization.CultureInfo.InvariantCulture) };
+
+        var response = await ClientFor(handler).GetAsync(1, cancellationToken: CancellationToken.None);
+
+        Assert.Equal(TimeSpan.Zero, response.RetryAfter);
+    }
+
+    [Fact]
+    public async Task Retry_After_は_429_以外_503_でも_本文の失敗でも読む()
+    {
+        var unavailable = await ClientFor(new StubHandler(HttpStatusCode.ServiceUnavailable, "{}") { RetryAfterRaw = "11" })
+            .CreateAsync(1, Record);
+        var bodyFailure = await ClientFor(new StubHandler(HttpStatusCode.OK, """{"StatusCode":429}""") { RetryAfterRaw = "12" })
+            .UpdateAsync(1, Record);
+        var invalid = await ClientFor(new StubHandler(HttpStatusCode.OK, "<html/>") { RetryAfterRaw = "13" })
+            .UpdateAsync(1, Record);
+
+        Assert.Equal(TimeSpan.FromSeconds(11), unavailable.RetryAfter);
+        Assert.Equal(TimeSpan.FromSeconds(12), bodyFailure.RetryAfter);
+        Assert.Equal(TimeSpan.FromSeconds(13), invalid.RetryAfter);
+        Assert.True(invalid.IsInvalidResponse);
     }
 
     [Fact]
@@ -420,6 +501,9 @@ public sealed class PleasanterGatewayTests
 
         public RetryConditionHeaderValue? RetryAfter { get; init; }
 
+        /// <summary>ヘッダの生の文字列（HttpClient の構文検査を通して読まれる）。</summary>
+        public string? RetryAfterRaw { get; init; }
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
@@ -439,6 +523,11 @@ public sealed class PleasanterGatewayTests
                 RequestMessage = request,
             };
             response.Headers.RetryAfter = RetryAfter;
+            if (RetryAfterRaw is not null)
+            {
+                response.Headers.TryAddWithoutValidation("Retry-After", RetryAfterRaw);
+            }
+
             return response;
         }
     }

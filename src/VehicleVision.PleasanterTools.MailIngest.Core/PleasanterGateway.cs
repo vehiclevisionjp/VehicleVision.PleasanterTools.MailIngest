@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using VehicleVision.PleasanterTools.DotNetClient;
@@ -11,11 +10,12 @@ namespace VehicleVision.PleasanterTools.MailIngest.Core;
 /// <see cref="PleasanterResponse"/> に、本ツールが必要とする検査の結果を足した結果。
 /// </summary>
 /// <remarks>
+/// <see cref="PleasanterResponse.RetryAfter"/>（DotNetClient 0.4.0）は、429 などの待機指定を <see cref="TimeSpan"/> で持つ（上限の丸めはしない。待つかどうかは呼び出し側が決める）。
 /// <see cref="PleasanterResponse.ErrorKind"/> は DotNetClient の分類（<c>None</c>・<c>Transient</c>・<c>Permanent</c>・<c>Unauthorized</c>・<c>Unknown</c>）。
 /// 「HTTP は届いたが、応答が期待する形ではない」ものは <see cref="PleasanterErrorKind.Unknown"/> にし、
 /// <see cref="IsInvalidResponse"/> を立てる（成功にせず、作成・更新では照合してから判断するため。経路・設定の問題として見分けたいときに使う）。
 /// </remarks>
-/// <param name="ErrorKind">扱い方。HTTP が 200 でも <paramref name="ApiStatusCode"/> が 200 以外なら、その値で分類し直した結果。</param>
+/// <param name="ErrorKind">扱い方。HTTP が 200 でも <paramref name="ApiStatusCode"/> が 200 以外なら、その値で分類した結果（DotNetClient 0.3.0 以降が行う）。</param>
 /// <param name="StatusCode">HTTP のステータス。応答が無ければ <c>null</c>。</param>
 /// <param name="Id">作成・更新されたレコードの ID。</param>
 /// <param name="Message">Pleasanter が返した文言。**ログへ出さない。**</param>
@@ -36,9 +36,6 @@ public sealed record PleasanterResult(
     /// このとき <see cref="PleasanterResponse.ErrorKind"/> は <see cref="PleasanterErrorKind.Unknown"/>。経路・設定の問題とみなす。
     /// </summary>
     public bool IsInvalidResponse { get; init; }
-
-    /// <summary>429 などの <c>Retry-After</c>（秒または HTTP-date を相対時間にしたもの）。無ければ <c>null</c>。</summary>
-    public TimeSpan? RetryAfter { get; init; }
 
     /// <summary>
     /// 作成・更新が、失敗応答や応答の喪失でもサーバで反映済みの可能性がある。
@@ -73,16 +70,12 @@ public sealed record PleasanterResult(
 /// API キーは本文に載るため、<c>BaseUrl</c> の検査と秘密を出さない扱いは DotNetClient に任せる。</para>
 /// <para>**このクラスは再試行しない。** 失敗の扱いは呼び出し側が決める。</para>
 /// <para>HTTP 200 だけでは成功にしない。応答 JSON の <c>StatusCode</c>、作成時の <c>Id</c>、一覧の構造を検査する
-/// （DotNetClient 0.2.0 は HTTP のステータスだけで分類し、本文が JSON でなくても成功にするため、ここで補う）。
+/// （DotNetClient は本文が JSON でなくても HTTP のステータスだけで成功にするため、本文の形の検査はここで続ける）。
 /// 応答の大きさは <see cref="MaxResponseBytes"/> まで。超えると <see cref="HttpClient"/> が読み込みを打ち切り、
 /// 応答が無かったもの（<see cref="PleasanterErrorKind.Unknown"/>）として扱う。</para>
-/// <para>**DotNetClient 0.2.0 に無いものを、ここで補っている。** 該当の変更を含む版へ上げたら、不要になった分を消す。</para>
-/// <list type="bullet">
-/// <item><description>HTTP が 200 でも、本文の <c>StatusCode</c> が 200 以外なら失敗として分類する
-/// （DotNetClient #95・PR #96 は develop にあるが 0.2.0 には無い。**DotNetClient #95 を含む版へ上げたら、この分類の補いは消せる**。
-/// 本文の形の検査・Id・一覧・反映済みの可能性は、それとは別に本ツールが持つ）</description></item>
-/// <item><description>Retry-After ヘッダを読む（DotNetClient は返さない）。待機指定が長いときに次回へ回すために使う</description></item>
-/// </list>
+/// <para>HTTP が 200 でも本文の <c>StatusCode</c> が 200 以外なら失敗として分類する処理と、<c>Retry-After</c> の読み取りは、
+/// DotNetClient（0.3.0 の <see cref="PleasanterResponse.ApplicationStatusCode"/>・0.4.0 の <see cref="PleasanterResponse.RetryAfter"/>）が行う。
+/// 本ツールの結果の <see cref="PleasanterResult.StatusCode"/> は、本文の失敗のときだけ本文の <c>StatusCode</c> を報告する（従来どおり）。</para>
 /// <para>型付きのメソッド（<c>client.Items.*</c>）は使わず、<see cref="PleasanterApiClient.PostJsonAsync"/> だけを使う。
 /// 型付きは最初の呼び出しの前に版の問い合わせを 1 回行い、本ツールが数える API 呼び出しの回数（日次枠・毎秒の上限）の外で通信が増えるため。</para>
 /// <para>ここに書いた応答の形は設計文書の推奨と参照ソースの確認に基づく。**実機の Pleasanter では未検証。**</para>
@@ -102,7 +95,7 @@ public sealed class PleasanterGateway : IDisposable
     {
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(optionsProvider);
-        _httpClient = new HttpClient(new RetryAfterRecorder(handler), disposeHandler: true)
+        _httpClient = new HttpClient(handler, disposeHandler: true)
         {
             MaxResponseContentBufferSize = MaxResponseBytes,
         };
@@ -218,39 +211,6 @@ public sealed class PleasanterGateway : IDisposable
     /// <inheritdoc />
     public void Dispose() => _httpClient.Dispose();
 
-    internal static PleasanterErrorKind Classify(HttpStatusCode statusCode) => statusCode switch
-    {
-        HttpStatusCode.OK => PleasanterErrorKind.None,
-        HttpStatusCode.Unauthorized => PleasanterErrorKind.Unauthorized,
-        HttpStatusCode.BadRequest or HttpStatusCode.Forbidden or HttpStatusCode.NotFound
-            => PleasanterErrorKind.Permanent,
-        HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests
-            => PleasanterErrorKind.Transient,
-        _ => (int)statusCode >= 500 ? PleasanterErrorKind.Transient : PleasanterErrorKind.Permanent,
-    };
-
-    /// <summary>Retry-After を相対時間へ。秒・HTTP-date のどちらも解釈する。負は 0 にする。</summary>
-    internal static TimeSpan? ParseRetryAfter(RetryConditionHeaderValue? header, DateTimeOffset now)
-    {
-        if (header is null)
-        {
-            return null;
-        }
-
-        if (header.Delta is { } delta)
-        {
-            return delta < TimeSpan.Zero ? TimeSpan.Zero : delta;
-        }
-
-        if (header.Date is { } date)
-        {
-            var wait = date - now;
-            return wait < TimeSpan.Zero ? TimeSpan.Zero : wait;
-        }
-
-        return null;
-    }
-
     private enum CallKind
     {
         Other,
@@ -268,19 +228,10 @@ public sealed class PleasanterGateway : IDisposable
     {
         var isWrite = kind is CallKind.Create or CallKind.Update;
         var node = JsonSerializer.SerializeToNode(body, SerializerOptions) as JsonObject ?? [];
-        var slot = new RetryAfterSlot();
-        RetryAfterRecorder.Current.Value = slot;
-        PleasanterResponse response;
-        try
-        {
-            // 取り消しは伝わる。BaseUrl の不正（ArgumentException）・接続設定の解決の失敗も伝わる。
-            // それ以外の通信の失敗は、DotNetClient が Unknown で返す
-            response = await _client.PostJsonAsync(path, node, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            RetryAfterRecorder.Current.Value = null;
-        }
+
+        // 取り消しは伝わる。BaseUrl の不正（ArgumentException）・接続設定の解決の失敗も伝わる。
+        // それ以外の通信の失敗は、DotNetClient が Unknown で返す
+        var response = await _client.PostJsonAsync(path, node, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode is not { } httpStatus)
         {
@@ -288,31 +239,32 @@ public sealed class PleasanterGateway : IDisposable
             return new PleasanterResult(PleasanterErrorKind.Unknown) { MayHaveBeenApplied = isWrite };
         }
 
-        var retryAfter = slot.Value;
+        var retryAfter = response.RetryAfter;
         var httpKind = response.ErrorKind;
         var applied = isWrite && httpKind is PleasanterErrorKind.Transient or PleasanterErrorKind.None;
 
         JsonObject? obj = response.Body as JsonObject;
-        if (httpKind is not PleasanterErrorKind.None)
+        var bodyStatus = response.ApplicationStatusCode;
+
+        // HTTP 200 なのに本文の StatusCode が 200 以外（DotNetClient 0.3.0 が失敗として分類済み）
+        var failedInBody = httpKind is not PleasanterErrorKind.None
+            && httpStatus == (int)HttpStatusCode.OK
+            && bodyStatus is { } failedStatus
+            && failedStatus != (int)HttpStatusCode.OK;
+        if (httpKind is not PleasanterErrorKind.None && !failedInBody)
         {
             // 失敗ステータスは、本文が JSON でなくても HTTP の分類に従う
             return Build(response, obj, httpKind, httpStatus, apiStatus: null, retryAfter, applied);
         }
 
-        // HTTP 200 でも、JSON の StatusCode が無い・200 でないなら成功にしない
-        if (obj is null || !TryGetInt(obj, "StatusCode", out var bodyStatus))
+        // HTTP 200 でも、JSON の StatusCode が無い（整数でない）なら成功にしない
+        if (obj is null || bodyStatus is not { } apiStatus)
         {
             return Invalid(httpStatus, isWrite, retryAfter);
         }
 
-        var errorKind = PleasanterErrorKind.None;
-        var statusCode = httpStatus;
-        if (bodyStatus != (int)HttpStatusCode.OK)
-        {
-            errorKind = Classify((HttpStatusCode)bodyStatus);
-            statusCode = bodyStatus;
-            applied = isWrite && errorKind == PleasanterErrorKind.Transient;
-        }
+        var errorKind = httpKind;
+        var statusCode = failedInBody ? apiStatus : httpStatus;
 
         // Id が在るのに数値でない（DotNetClient は読めず null にする）
         if (errorKind == PleasanterErrorKind.None
@@ -326,7 +278,7 @@ public sealed class PleasanterGateway : IDisposable
             return Invalid(httpStatus, isWrite, retryAfter);
         }
 
-        var result = Build(response, obj, errorKind, statusCode, bodyStatus, retryAfter, applied);
+        var result = Build(response, obj, errorKind, statusCode, apiStatus, retryAfter, applied);
         if (errorKind == PleasanterErrorKind.None && kind == CallKind.List)
         {
             return ValidateList(obj, result, requestedOffset) ?? Invalid(httpStatus, isWrite: false, retryAfter);
@@ -386,29 +338,5 @@ public sealed class PleasanterGateway : IDisposable
         return obj.TryGetPropertyValue(name, out var node)
             && node is JsonValue jsonValue
             && jsonValue.TryGetValue<int>(out value);
-    }
-
-    private sealed class RetryAfterSlot
-    {
-        public TimeSpan? Value { get; set; }
-    }
-
-    /// <summary>応答の Retry-After を、呼び出しごとの入れ物へ書き留める（DotNetClient が返さないため）。</summary>
-    private sealed class RetryAfterRecorder(HttpMessageHandler inner) : DelegatingHandler(inner)
-    {
-        // 呼び出しの非同期の流れにだけ付く。同時の呼び出しは互いの記録を見ない
-        public static readonly AsyncLocal<RetryAfterSlot?> Current = new();
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            if (Current.Value is { } slot)
-            {
-                slot.Value = ParseRetryAfter(response.Headers.RetryAfter, DateTimeOffset.UtcNow);
-            }
-
-            return response;
-        }
     }
 }
