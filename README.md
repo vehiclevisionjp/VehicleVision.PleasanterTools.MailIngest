@@ -5,12 +5,13 @@ POP3 と IMAP でメールを受信し、差出人・件名・本文・日時な
 
 ## 現在の状態
 
-**ロジック層・状態 DB・メールの取得までを実装した段階です。取り込み実行（`run`）、結果不明の照合、受信後の既読・移動・削除は未実装です。**
+**取り込み実行（`run`）までを実装した段階です。受信後の既読・移動・削除（`leave` 以外）は未実装です。**
 実装済み（単体試験と、テスト用サーバ GreenMail に対する統合試験。Pleasanter 実機・実際のメールサーバは未検証）:
 設定 JSON の読込み・検証（`validate`）、正規化メールの列への対応づけと API レコードの組立、重複排除の外部キー・ハッシュ、
 Pleasanter 標準 API の呼び出し（NuGet の DotNetClient ＋ 応答の検査）、状態 DB（SQLite。`migrate` / `migrate-status`）、
-MIME の正規化（MimeKit）、IMAP / POP3 の非破壊の取得（パスワード認証。`Tls` / `StartTls` / `None`、証明書は `Strict` のみ）。
-未実装: 取り込み実行コマンド（`run`）、結果不明の照合、受信後の既読・移動・削除、OAuth2（Microsoft 365・Gmail は現状使えません）、
+MIME の正規化（MimeKit）、IMAP / POP3 の非破壊の取得（パスワード認証。`Tls` / `StartTls` / `None`、証明書は `Strict` のみ）、
+取り込み実行（`run --config`。取得 → 正規化 → 重複排除 → 対応づけ → 既存キー照合 → 作成 → DB 確定、結果不明の照合・保留、終了コード、運用サマリー。メールは `leave` でサーバに残し、既読にも移動にも削除にもしません）。
+未実装: 受信後の既読・移動・削除（markSeen・move・delete）、既存レコードの更新（`onExisting` は `skip` のみ）、OAuth2（Microsoft 365・Gmail は現状使えません）、
 証明書の例外（`AllowUntrusted` / `Pinned`）、添付の転送。
 設計は [アーキテクチャ方針](_documents/アーキテクチャ方針.md) を参照してください。
 管理画面・スケジューラ・Docker 化は今回の対象外です。
@@ -38,8 +39,18 @@ dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- check
 dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- validate --config <設定ファイル.json>
 ```
 
-この CLI はメールを取り込みません。`check` の秘密設定は環境変数のみで、`_FILE` は未対応です
-（`validate` は `NAME` と `NAME_FILE` の同時指定を検査します）。
+取り込みは、状態 DB を `migrate` で作ってから `run` で実行します。
+
+```bash
+dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- migrate
+dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- run --config <設定ファイル.json> [--json]
+```
+
+秘密（Pleasanter の API キー・メールのユーザー名とパスワード）は、設定が指す環境変数名の `NAME` か `NAME_FILE` から読みます。終了コードは 0 = 成功、1 = 処理エラー・照合待ちあり、2 = 起動設定の不正（何も実行していない）、3 = 件数上限で未処理が残っている、です。
+標準出力は運用サマリー（件数だけ。`--json` で JSON）、標準エラーは警告・構造化ログです。**添付は Pleasanter へ転送しません。**
+**実機のメールサーバ・Pleasanter では未検証です。**
+
+`check` の秘密設定は環境変数のみで、`_FILE` は未対応です（`validate` は `NAME` と `NAME_FILE` の同時指定を検査します）。
 開発・検証手順は [開発ガイド](_documents/開発ガイド.md)、
 運用規約は [開発運用](_documents/開発運用.md) にあります。
 

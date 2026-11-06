@@ -57,6 +57,12 @@ public sealed class SourceRunSummary(string sourceId)
     /// <summary>ソース（またはその接続先）の処理を止めた理由。止めていなければ <c>null</c>。</summary>
     public string? StopReason { get; internal set; }
 
+    /// <summary>実行の終了時点の、ソースの項目の状態ごとの件数（過去の保留を含む）。</summary>
+    public IReadOnlyDictionary<State.IngestState, int> StateCounts { get; internal set; } = new Dictionary<State.IngestState, int>();
+
+    /// <summary>終了時点で、指定の状態にある項目の件数。</summary>
+    public int Outstanding(State.IngestState state) => StateCounts.GetValueOrDefault(state);
+
     /// <summary>保留の理由コードごとの件数。</summary>
     public IReadOnlyDictionary<string, int> HeldByCode => _heldByCode;
 
