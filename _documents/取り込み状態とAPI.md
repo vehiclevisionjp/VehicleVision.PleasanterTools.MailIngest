@@ -99,12 +99,27 @@ stateDiagram-v2
     Sending --> Unknown: 応答不明・送信中に再起動
     Sending --> RetryPending: 未作成が確実な一時拒否
     Sending --> Held: 恒久エラー・競合
+    Pending --> Held: 送信前の内容エラー・競合
     RetryPending --> Pending: 待機終了
     Unknown --> AckPending: キーと内容の一致を確認
     Unknown --> Held: 0件・複数・不一致・確認不能
     AckPending --> Completed: 受信後操作成功・leave
     AckPending --> AckPending: 操作失敗・応答不明
 ```
+
+実装状況（#81。`.Core` の `SourceIngestRunner`・`PleasanterOperations`・`SourcePlan`。**推奨どおりであり確定仕様ではない**。偽の IMAP・偽の Pleasanter の単体試験のみ・実機未検証）:
+
+- 流れ: 取得（`leave`・非破壊）→ 正規化（境界 `IMailNormalizer`。`.Mail` の `MimeMailNormalizer`）→ 外部キー（Message-ID、欠落は RAW ハッシュ）
+  → 状態確保 → 対応づけ → 既存キー照合（検索）→ `Sending` を永続化 → 作成 → `AckPending` → `Completed`
+- 1 通の失敗（RAW 上限・不正 MIME・対応づけ失敗・API の恒久エラー・同一キー別内容・サーバに別内容の同キー・複数一致）は、そのメールを `Held` にして残し、後続は続ける。
+  図に無い **`Pending → Held`**（送信前の内容エラー・競合）を足した。外部キーを作れないもの（RAW 上限超過・同一キー別内容）は、位置から作った識別
+  （`ExternalKey.CreateFromLocation`。保留の記録専用で重複排除には使わない）で `Held` の項目にし、次回の再取得・件数枠の占有を避ける
+- 同一キー・同一内容の複製（別 UID）は再作成せず位置だけ足す。既存キー照合で、サーバに同キー・同投射ハッシュが 1 件あれば RecordId を回復して確定（再作成しない）
+- 作成の結果が不明（通信失敗・応答の喪失・408 / 429 / 5xx・形の不正な応答）は `Unknown`（再送しない）。認証の拒否は未作成が確実なので `RetryPending` で次回へ。
+  接続先全体の送信は、認証の拒否・429・日次枠の残量 0 で止める（`PleasanterOperations.HaltReason`）
+- API 成功後の DB 確定に失敗したら、受信後操作へ進まずソースの処理を失敗として止める（`Sending` が残り、次回は結果不明）
+- 未実装: `Unknown` の照合・`AckPending` の再開・検索の再試行（#82）、
+  `run`・終了コード・サマリー（#83）、受信後操作 markSeen・move・delete（#84）。`receivedAt` は常に未設定・GetSite 検査は無し（#86）
 
 作成と DB への確定を分散トランザクションにはできない。
 `Sending` を送信前に永続化し、再起動で残っていたら結果不明扱いにする。

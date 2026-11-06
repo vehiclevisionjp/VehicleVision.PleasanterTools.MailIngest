@@ -207,6 +207,33 @@ public sealed class IngestStateStore(IDbConnectionFactory connections, TimeProvi
         return row?.ToItem();
     }
 
+    public async Task<IReadOnlySet<string>> ListSettledLocationKeysAsync(
+        string sourceId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = connections.Create();
+        var keys = await connection.QueryAsync<string>(new CommandDefinition(
+            Sql("SELECT l.[LocationKey] FROM [MailLocations] l INNER JOIN [IngestItems] i ON i.[Id] = l.[IngestItemId] "
+                + "WHERE l.[SourceId] = @SourceId AND i.[State] NOT IN (@Pending, @RetryPending)"),
+            new
+            {
+                SourceId = sourceId,
+                Pending = nameof(IngestState.Pending),
+                RetryPending = nameof(IngestState.RetryPending),
+            },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+        return keys.ToHashSet(StringComparer.Ordinal);
+    }
+
+    public async Task SetItemAckStateAsync(Guid ingestItemId, AckState state, CancellationToken cancellationToken = default)
+    {
+        await using var connection = connections.Create();
+        await connection.ExecuteAsync(new CommandDefinition(
+            Sql("UPDATE [MailLocations] SET [AckState] = @AckState, [UpdatedAt] = @Now WHERE [IngestItemId] = @Id"),
+            new { AckState = state.ToString(), Now = Now(), Id = ingestItemId.ToString("D") },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
     public async Task<bool> SetAckStateAsync(
         string sourceId,
         string locationKey,
