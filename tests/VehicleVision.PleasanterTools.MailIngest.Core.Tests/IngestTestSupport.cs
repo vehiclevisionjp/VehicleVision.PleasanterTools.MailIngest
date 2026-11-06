@@ -46,7 +46,11 @@ internal static class TestMail
         }
 
         using var stream = new MemoryStream();
-        message.WriteTo(stream);
+
+        // 改行は OS 既定に任せず CRLF に固定する（Linux の既定は LF で、下の行の取り除きが効かなくなる）
+        var options = FormatOptions.Default.Clone();
+        options.NewLineFormat = NewLineFormat.Dos;
+        message.WriteTo(options, stream);
         if (messageId is not null)
         {
             return stream.ToArray();
