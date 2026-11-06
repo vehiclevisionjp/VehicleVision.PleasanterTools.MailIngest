@@ -19,6 +19,7 @@ namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
 /// <para>環境変数: <c>MAILINGEST_TEST_GREENMAIL_HOST</c>、<c>_USER</c>、<c>_PASSWORD</c>、
 /// <c>_PORTS</c>（<c>smtp,pop3,imap,pop3s,imaps</c> の順にカンマ区切り）。</para>
 /// </remarks>
+[Collection("GreenMail")]
 public sealed class GreenMailFetchTests
 {
     private const string Prefix = "MAILINGEST_TEST_GREENMAIL_";

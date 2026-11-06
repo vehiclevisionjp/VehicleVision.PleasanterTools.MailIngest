@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Core\VehicleVision.PleasanterTools.MailIngest.Core.csproj" />
     <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Data\VehicleVision.PleasanterTools.MailIngest.Data.csproj" />
+    <ProjectReference Include="..\VehicleVision.PleasanterTools.MailIngest.Mail\VehicleVision.PleasanterTools.MailIngest.Mail.csproj" />
   </ItemGroup>
 
 </Project>

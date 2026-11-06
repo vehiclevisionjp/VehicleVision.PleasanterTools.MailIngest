@@ -1,3 +1,4 @@
+using VehicleVision.PleasanterTools.MailIngest.Cli;
 using VehicleVision.PleasanterTools.MailIngest.Core;
 using VehicleVision.PleasanterTools.Core.Data;
 using VehicleVision.PleasanterTools.MailIngest.Core.Configuration;
@@ -5,10 +6,11 @@ using VehicleVision.PleasanterTools.MailIngest.Data;
 
 // check    : 接続確認（PLEASANTER_BASE_URL / PLEASANTER_API_KEY）。
 // validate : 設定 JSON を検査する（接続しない。秘密の値は読まない）。
+// run      : 取り込みを 1 回実行する（run --config <path> [--json]。終了コード 0 成功 / 1 処理エラー・照合待ち / 2 起動設定不正 / 3 件数上限で残り）。
 // migrate / migrate-status : 状態 DB（既定は SQLite の mailingest.db）のマイグレーションを当てる／状態を見る。
 //   設定: MAILINGEST_DB_PROVIDER / MAILINGEST_DB_CONNECTIONSTRING / MAILINGEST_DB_ALLOW_INSECURE。
 const string usage =
-    "Usage: VehicleVision.PleasanterTools.MailIngest check | validate --config <path> | migrate | migrate-status";
+    "Usage: VehicleVision.PleasanterTools.MailIngest check | validate --config <path> | run --config <path> [--json] | migrate | migrate-status";
 
 if (args is ["check"])
 {
@@ -18,6 +20,16 @@ if (args is ["check"])
 if (args is ["validate", "--config", var path])
 {
     return Validate(path);
+}
+
+if (args is ["run", "--config", var runPath])
+{
+    return await RunCommand.ExecuteAsync(runPath, json: false);
+}
+
+if (args is ["run", "--config", var runJsonPath, "--json"])
+{
+    return await RunCommand.ExecuteAsync(runJsonPath, json: true);
 }
 
 if (args is ["migrate" or "migrate-status"])
