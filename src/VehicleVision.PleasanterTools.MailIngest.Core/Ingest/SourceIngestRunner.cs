@@ -46,6 +46,9 @@ public sealed class SourceIngestRunner(
         var source = plan.Source;
         var summary = new SourceRunSummary(source.SourceId);
 
+        // 新しいメールより先に、前回までの結果不明の照合と、API 成功済みの受信後操作の再開を行う
+        await RecoverAsync(plan, summary, cancellationToken).ConfigureAwait(false);
+
         MailListing listing;
         try
         {
@@ -107,6 +110,7 @@ public sealed class SourceIngestRunner(
             summary.StopReason ??= api.HaltReason;
         }
 
+        summary.RetryNotBefore = api.RetryNotBefore;
         Log(
             IngestLogLevel.Information,
             "SourceRunFinished",
@@ -114,6 +118,183 @@ public sealed class SourceIngestRunner(
             count: summary.Listed,
             durationMs: stopwatch.ElapsedMilliseconds);
         return summary;
+    }
+
+    /// <summary>件数の多い異常時に 1 回の実行が膨らまないよう、状態ごとに 1 回で扱う件数を絞る。</summary>
+    private const int RecoveryBatch = 500;
+
+    /// <summary>
+    /// 前回までの未完了を片づける（メールサーバへは触れない）。実行の排他（<c>TryBeginRunAsync</c>）を取った後で呼ぶ。
+    /// <list type="number">
+    /// <item>再起動で残った <c>Sending</c> を <c>Unknown</c> にする（自動再送はしない）。</item>
+    /// <item><c>AckPending</c>: API は成功済み。API を再実行せず、受信後操作を再開して <c>Completed</c> にする（<c>leave</c> は何もしない）。</item>
+    /// <item><c>Unknown</c>: 外部キーで検索して照合する。1 件かつ投射ハッシュ一致なら RecordId を回復して <c>AckPending</c>。
+    /// 0 件は時間を空けて検索のみ最大回数まで行い、解消しなければ <c>Held</c>（<b>即 Create しない</b>。索引・レプリカ遅延・権限不足の可能性）。
+    /// 複数・不一致・確認不能は <c>Held</c>。検索自体の失敗は <c>Unknown</c> のまま次回へ残す。</item>
+    /// </list>
+    /// メールサーバに接続できない実行でも呼べる。
+    /// </summary>
+    public async Task RecoverAsync(SourcePlan plan, SourceRunSummary summary, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(summary);
+
+        var sourceId = plan.Source.SourceId;
+        summary.Interrupted = await store.MarkInterruptedAsUnknownAsync(sourceId, cancellationToken).ConfigureAwait(false);
+        if (summary.Interrupted > 0)
+        {
+            Log(IngestLogLevel.Warning, "InterruptedMarkedUnknown", sourceId, count: summary.Interrupted);
+        }
+
+        foreach (var item in await store.ListByStateAsync(sourceId, IngestState.AckPending, RecoveryBatch, cancellationToken)
+                     .ConfigureAwait(false))
+        {
+            if (await TryRecoverAsync(summary, sourceId, item, () => CompleteAckAsync(plan, item, cancellationToken), cancellationToken)
+                    .ConfigureAwait(false))
+            {
+                summary.ResumedAck++;
+            }
+        }
+
+        foreach (var item in await store.ListByStateAsync(sourceId, IngestState.Unknown, RecoveryBatch, cancellationToken)
+                     .ConfigureAwait(false))
+        {
+            if (api.HaltReason is not null)
+            {
+                summary.StopReason ??= api.HaltReason;
+                summary.ReconcileDeferred++;
+                continue;
+            }
+
+            await TryRecoverAsync(summary, sourceId, item, () => ReconcileAsync(plan, summary, item, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private async Task<bool> TryRecoverAsync(
+        SourceRunSummary summary,
+        string sourceId,
+        IngestItem item,
+        Func<Task> action,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await action().ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // 1 件の失敗は他へ波及させない。状態は変えず、次回に回す
+            cancellationToken.ThrowIfCancellationRequested();
+            summary.Failed++;
+            Log(IngestLogLevel.Error, "RecoveryFailed", sourceId, item.Id, ex.GetType().Name);
+            return false;
+        }
+    }
+
+    private async Task ReconcileAsync(
+        SourcePlan plan,
+        SourceRunSummary summary,
+        IngestItem item,
+        CancellationToken cancellationToken)
+    {
+        var target = plan.Source.Target;
+        var sourceId = plan.Source.SourceId;
+        if (item.ProjectionHash is not { } expected)
+        {
+            await HoldFromAsync(summary, sourceId, item, IngestState.Unknown, "ReconcileNoProjection", cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        var attempts = Math.Max(1, api.Options.ReconcileSearchAttempts);
+        KeyLookup lookup = default!;
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            lookup = await api.FindByKeyAsync(
+                target.SiteId,
+                target.ExternalKeyColumn,
+                target.ProjectionHashColumn,
+                item.ExternalKey,
+                cancellationToken).ConfigureAwait(false);
+            if (lookup.Outcome != KeyLookupOutcome.None || attempt == attempts)
+            {
+                break;
+            }
+
+            await api.DelayAsync(api.Options.ReconcileInterval, cancellationToken).ConfigureAwait(false);
+        }
+
+        switch (lookup.Outcome)
+        {
+            case KeyLookupOutcome.Failed:
+                summary.ReconcileDeferred++;
+                Log(IngestLogLevel.Warning, "ReconcileLookupFailed", sourceId, item.Id, FailureCode(lookup.Failure), lookup.Failure?.StatusCode);
+                return;
+            case KeyLookupOutcome.One:
+                if (!string.Equals(lookup.ProjectionHash, expected, StringComparison.Ordinal))
+                {
+                    await HoldFromAsync(summary, sourceId, item, IngestState.Unknown, "ReconcileMismatch", cancellationToken)
+                        .ConfigureAwait(false);
+                    return;
+                }
+
+                if (await store.TransitionAsync(
+                        item.Id,
+                        IngestState.Unknown,
+                        IngestState.AckPending,
+                        new TransitionData { RecordId = lookup.RecordId },
+                        cancellationToken).ConfigureAwait(false))
+                {
+                    await CompleteAckAsync(plan, item, cancellationToken).ConfigureAwait(false);
+                    summary.Reconciled++;
+                }
+
+                return;
+            case KeyLookupOutcome.Multiple:
+                await HoldFromAsync(summary, sourceId, item, IngestState.Unknown, "ReconcileMultiple", cancellationToken)
+                    .ConfigureAwait(false);
+                return;
+            case KeyLookupOutcome.Inconclusive:
+                await HoldFromAsync(summary, sourceId, item, IngestState.Unknown, "ReconcileInconclusive", cancellationToken)
+                    .ConfigureAwait(false);
+                return;
+            default:
+                // 時間を空けても 0 件。即 Create せず、人が確認する（再 Create は運用者の明示再開だけ）
+                await HoldFromAsync(summary, sourceId, item, IngestState.Unknown, "ReconcileNotFound", cancellationToken)
+                    .ConfigureAwait(false);
+                return;
+        }
+    }
+
+    /// <summary>受信後操作（<c>leave</c> は何もしない）を完了して <see cref="IngestState.Completed"/> にする。markSeen・move・delete は #84。</summary>
+    private async Task CompleteAckAsync(SourcePlan plan, IngestItem item, CancellationToken cancellationToken)
+    {
+        await store.SetItemAckStateAsync(item.Id, AckState.Done, cancellationToken).ConfigureAwait(false);
+        await store.TransitionAsync(item.Id, IngestState.AckPending, IngestState.Completed, null, cancellationToken)
+            .ConfigureAwait(false);
+        Log(IngestLogLevel.Information, "ItemCompleted", plan.Source.SourceId, item.Id);
+    }
+
+    private async Task HoldFromAsync(
+        SourceRunSummary summary,
+        string sourceId,
+        IngestItem item,
+        IngestState from,
+        string code,
+        CancellationToken cancellationToken)
+    {
+        if (await store.TransitionAsync(item.Id, from, IngestState.Held, new TransitionData { LastErrorCode = code }, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            summary.CountHeld(code);
+            Log(IngestLogLevel.Warning, "ItemHeld", sourceId, item.Id, code);
+        }
     }
 
     private async Task ProcessAsync(
@@ -299,6 +480,13 @@ public sealed class SourceIngestRunner(
                 return;
         }
 
+        if (api.HaltReason is not null)
+        {
+            // 検索の応答で、日次枠の残量 0・認証拒否・429 を知った。新規の送信へ進まず、Pending のまま次回へ残す
+            summary.RetryLater++;
+            return;
+        }
+
         // 作成。送信前に Sending を永続化する（再起動で残ったら結果不明として扱う。投射ハッシュも先に残して照合に使う）
         if (!await store.TransitionAsync(
                 item.Id,
@@ -387,11 +575,7 @@ public sealed class SourceIngestRunner(
             throw new IngestCommitException("API 成功後の DB 確定が、状態の食い違いで行えなかった。");
         }
 
-        // leave: 受信後操作は無い。位置を「実施済み」にして完了する（markSeen・move・delete は #84）
-        await store.SetItemAckStateAsync(item.Id, AckState.Done, cancellationToken).ConfigureAwait(false);
-        await store.TransitionAsync(item.Id, IngestState.AckPending, IngestState.Completed, null, cancellationToken)
-            .ConfigureAwait(false);
-        Log(IngestLogLevel.Information, "ItemCompleted", plan.Source.SourceId, item.Id);
+        await CompleteAckAsync(plan, item, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task HoldAsync(

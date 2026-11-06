@@ -139,7 +139,7 @@ public enum CreateBehavior
 internal sealed class FakePleasanterHandler : HttpMessageHandler
 {
     private readonly Queue<CreateBehavior> _creates = new();
-    private readonly Queue<HttpStatusCode> _searchFailures = new();
+    private readonly Queue<(HttpStatusCode Status, int? RetryAfterSeconds)> _searchFailures = new();
 
     public List<JsonObject> Records { get; } = [];
 
@@ -161,9 +161,18 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
     {
         foreach (var status in statuses)
         {
-            _searchFailures.Enqueue(status);
+            _searchFailures.Enqueue((status, null));
         }
     }
+
+    public void ScriptSearchFailure(HttpStatusCode status, int retryAfterSeconds) =>
+        _searchFailures.Enqueue((status, retryAfterSeconds));
+
+    /// <summary>最初のこの回数の検索は、レコードがあっても 0 件を返す（索引・レプリカの遅延）。</summary>
+    public int HiddenSearches { get; set; }
+
+    /// <summary>応答へ載せる日次枠の残り（null なら載せない）。</summary>
+    public int? LimitRemaining { get; set; }
 
     /// <summary>サーバ側にレコードを直接足す（外部の作成・DB 消失の再現）。</summary>
     public long AddRecord(string externalKey, string projectionHash)
@@ -207,7 +216,7 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
 
             return behavior == CreateBehavior.ApplyThen503
                 ? Json(HttpStatusCode.ServiceUnavailable, "{}")
-                : Json(HttpStatusCode.OK, "{\"Id\":" + id + ",\"StatusCode\":200,\"Message\":\"ok\"}");
+                : Json(HttpStatusCode.OK, "{\"Id\":" + id + ",\"StatusCode\":200,\"Message\":\"ok\"" + Limit() + "}");
         }
 
         if (path.EndsWith("/Get", StringComparison.Ordinal))
@@ -215,7 +224,14 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
             SearchCount++;
             if (_searchFailures.Count > 0)
             {
-                return Json(_searchFailures.Dequeue(), "{}");
+                var (status, retryAfter) = _searchFailures.Dequeue();
+                var failure = Json(status, "{}");
+                if (retryAfter is { } seconds)
+                {
+                    failure.Headers.TryAddWithoutValidation("Retry-After", seconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+
+                return failure;
             }
 
             return Search(body);
@@ -247,7 +263,14 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
         var wanted = filter is { Value: { } v }
             ? JsonSerializer.Deserialize<string[]>(v.GetValue<string>())![0]
             : null;
+        var hidden = HiddenSearches > 0;
+        if (hidden)
+        {
+            HiddenSearches--;
+        }
+
         var hits = Records
+            .Where(r => !hidden)
             .Where(r => column is null || (string?)r["ClassHash"]?[column] == wanted)
             .ToList();
         var offset = (int?)body["Offset"] ?? 0;
@@ -256,6 +279,7 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
         var response = new JsonObject
         {
             ["StatusCode"] = 200,
+            ["LimitRemaining"] = LimitRemaining,
             ["Response"] = new JsonObject
             {
                 ["Offset"] = offset,
@@ -266,6 +290,8 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
         };
         return Json(HttpStatusCode.OK, response.ToJsonString());
     }
+
+    private string Limit() => LimitRemaining is { } n ? ",\"LimitPerDate\":100,\"LimitRemaining\":" + n : string.Empty;
 
     private static HttpResponseMessage Json(HttpStatusCode status, string json) => new(status)
     {
@@ -289,11 +315,29 @@ internal sealed class IngestHarness : IDisposable
         Gateway = new PleasanterGateway(
             Server,
             new PleasanterOptions { BaseUrl = "https://example.invalid/", ApiKey = "secret-key", DetectServerVersion = false });
-        Api = new PleasanterOperations(Gateway);
+        Api = NewApi();
         Log = new RecordingLog();
         Normalizer = new MimeMailNormalizer();
         Plan = CreatePlan(mappingTarget);
     }
+
+    /// <summary>待機の記録（実際には待たず、偽の時計を進める）。</summary>
+    public List<TimeSpan> Delays { get; } = [];
+
+    public PleasanterOperations NewApi(int reconcileAttempts = 3) => new(
+        Gateway,
+        new PleasanterOperationsOptions
+        {
+            RequestsPerSecond = 0,
+            ReconcileSearchAttempts = reconcileAttempts,
+            Delay = (wait, _) =>
+            {
+                Delays.Add(wait);
+                Time.Advance(wait);
+                return Task.CompletedTask;
+            },
+        },
+        Time);
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 6, 3, 0, 0, TimeSpan.Zero));
 

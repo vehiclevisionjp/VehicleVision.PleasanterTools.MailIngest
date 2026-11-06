@@ -150,6 +150,13 @@ public interface IIngestStateStore
     /// </summary>
     Task<IReadOnlySet<string>> ListSettledLocationKeysAsync(string sourceId, CancellationToken cancellationToken = default);
 
+    /// <summary>ソースの項目を、状態を指定して古い順（更新時刻）に最大 <paramref name="limit"/> 件返す。照合・再開の対象を挙げる。</summary>
+    Task<IReadOnlyList<IngestItem>> ListByStateAsync(
+        string sourceId, IngestState state, int limit, CancellationToken cancellationToken = default);
+
+    /// <summary>ソースの項目の、状態ごとの件数（0 件の状態は含まない）。運用サマリー・終了コードに使う。</summary>
+    Task<IReadOnlyDictionary<IngestState, int>> CountByStateAsync(string sourceId, CancellationToken cancellationToken = default);
+
     /// <summary>項目に結びつくすべての位置の受信後操作の状態を設定する。</summary>
     Task SetItemAckStateAsync(Guid ingestItemId, AckState state, CancellationToken cancellationToken = default);
 

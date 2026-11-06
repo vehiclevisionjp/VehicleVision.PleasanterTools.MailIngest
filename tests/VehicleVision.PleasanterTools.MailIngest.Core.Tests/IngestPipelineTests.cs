@@ -118,7 +118,6 @@ public sealed class IngestPipelineTests
         var session = new FakeMailSession().Add(TestMail.Raw("<a@example.invalid>"));
 
         var first = await h.RunAsync(session);
-        var second = await h.RunAsync(session);
 
         Assert.Equal(1, first.Unknown);
         Assert.Equal(0, first.Created);
@@ -126,8 +125,7 @@ public sealed class IngestPipelineTests
         Assert.Equal(IngestState.Unknown, item.State);
         Assert.NotNull(item.ProjectionHash); // 照合に使うので、送信前に残してある
         Assert.Equal(applied ? 1 : 0, h.Server.Records.Count);
-        Assert.Equal(1, h.Server.CreateCount); // 再送していない
-        Assert.Equal(0, second.Listed); // 照合は #82。ここでは取り直して作り直さない
+        Assert.Equal(1, h.Server.CreateCount); // 再送していない（次回の照合は IngestRecoveryTests）
     }
 
     [Fact]
@@ -148,7 +146,7 @@ public sealed class IngestPipelineTests
         Assert.Equal(1, h.Server.CreateCount);
 
         // 次回（接続先の停止は実行ごと。新しい操作の状態で再開する）
-        var retry = new SourceIngestRunner(h.Store, h.Normalizer, new PleasanterOperations(h.Gateway), h.Log, h.Time);
+        var retry = new SourceIngestRunner(h.Store, h.Normalizer, h.NewApi(), h.Log, h.Time);
         var second = await retry.RunAsync(h.Plan, session);
 
         Assert.Equal(2, second.Created);
@@ -225,7 +223,8 @@ public sealed class IngestPipelineTests
     public async Task 検索が失敗したら状態を進めず_作成もせず_次回へ残す()
     {
         using var h = new IngestHarness();
-        h.Server.ScriptSearchFailure(System.Net.HttpStatusCode.BadGateway);
+        h.Server.ScriptSearchFailure(
+            System.Net.HttpStatusCode.BadGateway, System.Net.HttpStatusCode.BadGateway, System.Net.HttpStatusCode.BadGateway);
         var session = new FakeMailSession().Add(TestMail.Raw("<a@example.invalid>"));
 
         var first = await h.RunAsync(session);
@@ -413,6 +412,10 @@ public sealed class IngestPipelineTests
         public Task<IngestItem?> FindByLocationAsync(string sourceId, string key, CancellationToken c = default) => inner.FindByLocationAsync(sourceId, key, c);
 
         public Task<IReadOnlySet<string>> ListSettledLocationKeysAsync(string sourceId, CancellationToken c = default) => inner.ListSettledLocationKeysAsync(sourceId, c);
+
+        public Task<IReadOnlyList<IngestItem>> ListByStateAsync(string sourceId, IngestState state, int limit, CancellationToken c = default) => inner.ListByStateAsync(sourceId, state, limit, c);
+
+        public Task<IReadOnlyDictionary<IngestState, int>> CountByStateAsync(string sourceId, CancellationToken c = default) => inner.CountByStateAsync(sourceId, c);
 
         public Task SetItemAckStateAsync(Guid id, AckState state, CancellationToken c = default) => inner.SetItemAckStateAsync(id, state, c);
 
