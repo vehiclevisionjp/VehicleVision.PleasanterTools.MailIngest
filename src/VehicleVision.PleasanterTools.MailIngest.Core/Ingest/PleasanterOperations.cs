@@ -32,6 +32,28 @@ public sealed record KeyLookup(
     string? ProjectionHash = null,
     PleasanterResult? Failure = null);
 
+/// <summary>Pleasanter 操作の再試行・送信間隔の設定。既定は設計の初期案（実測による確定値ではない）。</summary>
+public sealed class PleasanterOperationsOptions
+{
+    /// <summary>1 秒あたりの送信回数の上限（接続先設定の <c>requestsPerSecond</c>）。0 以下なら間隔を空けない。</summary>
+    public decimal RequestsPerSecond { get; init; } = 1;
+
+    /// <summary>検索（非更新）の合計試行回数。作成・更新は再送しない。</summary>
+    public int MaxSearchAttempts { get; init; } = 3;
+
+    /// <summary>検索の待機の上限（バックオフの上限・Retry-After を待つ最大）。これを超える Retry-After は待たず、次回へ回す。</summary>
+    public TimeSpan MaxWait { get; init; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>結果不明の照合で、レコードが 0 件のときの検索の合計回数（設計の初期案は最大 3 回）。解消しなければ保留する。</summary>
+    public int ReconcileSearchAttempts { get; init; } = 3;
+
+    /// <summary>照合の検索の間隔（索引・レプリカの遅延を待つ）。</summary>
+    public TimeSpan ReconcileInterval { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>待機の実装。試験で差し替える。既定は <see cref="TimeProvider"/> による遅延。</summary>
+    public Func<TimeSpan, CancellationToken, Task>? Delay { get; init; }
+}
+
 /// <summary>
 /// 取り込みが使う Pleasanter の操作（予約キーの検索・作成）。<see cref="PleasanterGateway"/> を包み、呼び出し回数と、
 /// 接続先全体を止めるべき状況（認証拒否・429・日次枠の残量 0）を数える。
@@ -41,13 +63,22 @@ public sealed record KeyLookup(
 /// <para>検索は全ページを辿る。外部キー列が完全一致するレコードだけを数え、1 ページ目の 0 件だけで未存在とはしない。
 /// 取得の形（<c>Response.Data</c> の <c>ClassHash</c>・<c>ResultId</c>）は参照ソースで確認したが、**実機の Pleasanter では未検証**。</para>
 /// </remarks>
-public sealed class PleasanterOperations(PleasanterGateway gateway)
+public sealed class PleasanterOperations(
+    PleasanterGateway gateway,
+    PleasanterOperationsOptions? options = null,
+    TimeProvider? time = null)
 {
+    private readonly PleasanterOperationsOptions _options = options ?? new PleasanterOperationsOptions();
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+    private DateTimeOffset? _lastCallAt;
+
     /// <summary>検索の 1 ページの件数（設計の初期案）。</summary>
     public const int PageSize = 100;
 
     /// <summary>検索で辿るページの上限。超えたら <see cref="KeyLookupOutcome.Inconclusive"/>。</summary>
     public const int MaxPages = 20;
+
+    public PleasanterOperationsOptions Options => _options;
 
     public int SearchCalls { get; private set; }
 
@@ -58,6 +89,9 @@ public sealed class PleasanterOperations(PleasanterGateway gateway)
 
     /// <summary>残りの日次枠（返ったときだけ）。</summary>
     public int? LimitRemaining { get; private set; }
+
+    /// <summary>待たずに次回へ回した再試行（Retry-After が待機の上限を超えた・試行を使い切った）の、これより前には再開しない時刻。</summary>
+    public DateTimeOffset? RetryNotBefore { get; private set; }
 
     public async Task<KeyLookup> FindByKeyAsync(
         long siteId,
@@ -70,10 +104,7 @@ public sealed class PleasanterOperations(PleasanterGateway gateway)
         var offset = 0;
         for (var page = 0; page < MaxPages; page++)
         {
-            SearchCalls++;
-            var result = await gateway.FindByExternalKeyAsync(siteId, keyColumn, key, offset, PageSize, cancellationToken)
-                .ConfigureAwait(false);
-            Observe(result);
+            var result = await SearchPageAsync(siteId, keyColumn, key, offset, cancellationToken).ConfigureAwait(false);
             if (!result.IsSuccess)
             {
                 return new KeyLookup(KeyLookupOutcome.Failed, Failure: result);
@@ -122,13 +153,91 @@ public sealed class PleasanterOperations(PleasanterGateway gateway)
         IReadOnlyDictionary<string, object?> record,
         CancellationToken cancellationToken = default)
     {
+        await PaceAsync(cancellationToken).ConfigureAwait(false);
         CreateCalls++;
         var result = await gateway.CreateAsync(siteId, record, cancellationToken).ConfigureAwait(false);
         Observe(result);
         return result;
     }
 
-    private void Observe(PleasanterResult result)
+    /// <summary>
+    /// 検索の 1 ページ。検索は非更新なので、408 / 429 / 5xx / 通信失敗は上限つきで再試行する
+    /// （Retry-After を優先、無ければ 1 秒開始・2 倍・ジッター付き・上限あり、合計 <see cref="PleasanterOperationsOptions.MaxSearchAttempts"/> 試行）。
+    /// 待機の上限を超える Retry-After は、値を短縮して早く送らず、待たずに次回へ回す（<see cref="RetryNotBefore"/>）。
+    /// </summary>
+    private async Task<PleasanterResult> SearchPageAsync(
+        long siteId,
+        string keyColumn,
+        string key,
+        int offset,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            await PaceAsync(cancellationToken).ConfigureAwait(false);
+            SearchCalls++;
+            var result = await gateway.FindByExternalKeyAsync(siteId, keyColumn, key, offset, PageSize, cancellationToken)
+                .ConfigureAwait(false);
+            ObserveQuota(result);
+            if (result.IsSuccess)
+            {
+                return result;
+            }
+
+            if (result.ErrorKind == PleasanterErrorKind.Unauthorized)
+            {
+                HaltReason ??= "Unauthorized";
+                return result;
+            }
+
+            var retryable = result.ErrorKind is PleasanterErrorKind.Transient or PleasanterErrorKind.Unknown;
+            var wait = result.RetryAfter ?? Backoff(attempt);
+            if (!retryable || attempt >= _options.MaxSearchAttempts || wait > _options.MaxWait)
+            {
+                if (retryable && result.RetryAfter is { } after)
+                {
+                    RetryNotBefore = _time.GetUtcNow() + after;
+                }
+
+                if (result.StatusCode == (int)HttpStatusCode.TooManyRequests)
+                {
+                    HaltReason ??= "RateLimited";
+                }
+
+                return result;
+            }
+
+            await DelayAsync(wait, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private TimeSpan Backoff(int attempt)
+    {
+        var seconds = Math.Min(_options.MaxWait.TotalSeconds, Math.Pow(2, attempt - 1));
+        return TimeSpan.FromSeconds(seconds) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 250));
+    }
+
+    /// <summary>待機する（照合の検索の間隔など）。</summary>
+    public Task DelayAsync(TimeSpan wait, CancellationToken cancellationToken) =>
+        _options.Delay is { } delay ? delay(wait, cancellationToken) : Task.Delay(wait, _time, cancellationToken);
+
+    /// <summary>1 秒あたりの送信回数の上限を守るため、前回の呼び出しからの間隔を空ける。</summary>
+    private async Task PaceAsync(CancellationToken cancellationToken)
+    {
+        if (_options.RequestsPerSecond > 0 && _lastCallAt is { } last)
+        {
+            var due = last + TimeSpan.FromSeconds((double)(1m / _options.RequestsPerSecond));
+            var now = _time.GetUtcNow();
+            if (due > now)
+            {
+                await DelayAsync(due - now, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        _lastCallAt = _time.GetUtcNow();
+    }
+
+    private void ObserveQuota(PleasanterResult result)
     {
         if (result.LimitRemaining is { } remaining)
         {
@@ -138,6 +247,11 @@ public sealed class PleasanterOperations(PleasanterGateway gateway)
                 HaltReason ??= "ApiQuotaExhausted";
             }
         }
+    }
+
+    private void Observe(PleasanterResult result)
+    {
+        ObserveQuota(result);
 
         if (result.ErrorKind == PleasanterErrorKind.Unauthorized)
         {

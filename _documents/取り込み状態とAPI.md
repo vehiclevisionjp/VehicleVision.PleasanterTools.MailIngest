@@ -118,8 +118,19 @@ stateDiagram-v2
 - 作成の結果が不明（通信失敗・応答の喪失・408 / 429 / 5xx・形の不正な応答）は `Unknown`（再送しない）。認証の拒否は未作成が確実なので `RetryPending` で次回へ。
   接続先全体の送信は、認証の拒否・429・日次枠の残量 0 で止める（`PleasanterOperations.HaltReason`）
 - API 成功後の DB 確定に失敗したら、受信後操作へ進まずソースの処理を失敗として止める（`Sending` が残り、次回は結果不明）
-- 未実装: `Unknown` の照合・`AckPending` の再開・検索の再試行（#82）、
-  `run`・終了コード・サマリー（#83）、受信後操作 markSeen・move・delete（#84）。`receivedAt` は常に未設定・GetSite 検査は無し（#86）
+
+実装状況（#82。`SourceIngestRunner.RecoverAsync`・`PleasanterOperations`。**推奨どおりであり確定仕様ではない**。偽のサーバの単体試験のみ・実機未検証）:
+
+- 実行の開始時（新しいメールの取得より先。メールサーバへ接続できなくても呼べる）に、`Sending` を `Unknown` にし、
+  `AckPending` は API を呼ばずに再開して `Completed`、`Unknown` は外部キーで検索して照合する
+- 照合: 1 件かつ投射ハッシュ（送信前に DB へ残した値）が一致なら RecordId を回復して確定。0 件は 10 秒間隔で合計 3 回まで検索し、
+  解消しなければ `Held`（`ReconcileNotFound`。**即 Create しない**）。複数・不一致・確認不能も `Held`。検索自体の失敗は `Unknown` のまま次回へ
+  （3 回・10 秒は設計の初期案で、利用量・サーバの索引遅延の実測による確定値ではない）
+- 検索（非更新）は、408 / 429 / 5xx / 通信失敗を合計 3 試行まで再試行する。待機は Retry-After を優先し、無ければ 1 秒開始・2 倍・ジッター付き・上限 60 秒。
+  Retry-After が 60 秒を超えるときは、短縮して早く送らず、待たずに次回へ回し、`RetryNotBefore`（これより前には再開しない時刻）をサマリーへ載せる
+  （項目の `NextAttemptAt` には記録しない。`RetryPending` の項目だけがそれを使う）。作成は再送しない
+- 毎秒の送信上限（接続先設定の `requestsPerSecond`）は呼び出しの間隔で守る。日次枠の残量 0・認証拒否・429 は接続先全体の送信を止める
+- 未実装: `run`・終了コード・サマリー（#83）、受信後操作 markSeen・move・delete（#84）。`receivedAt` は常に未設定・GetSite 検査は無し（#86）
 
 作成と DB への確定を分散トランザクションにはできない。
 `Sending` を送信前に永続化し、再起動で残っていたら結果不明扱いにする。
@@ -201,7 +212,7 @@ JSON の大小文字は API の指定名を保つ。Web 既定の camelCase 化�
 `Retry-After`（秒・HTTP-date。DotNetClient 0.4.0 の `PleasanterResponse.RetryAfter`）の読み取り、`Offset` / `PageSize` の送信、予約キーの完全一致検索、リダイレクトの無効化
 （`PleasanterHttp.CreateHandler()`）を実装した。作成・更新は再送せず、反映済みの可能性を `MayHaveBeenApplied` で返す。
 **すべてフェイクの HTTP での試験のみで、実機の Pleasanter では未検証**（`StatusCode` が常に返ること、フィルター形式など）。
-再試行・ページ送り・回数制限の待機は状態管理の所在が未決（#53）のため未実装。
+再試行・ページ送り・回数制限の待機は、状態管理の決定後に `PleasanterOperations` が実装した（#81・#82。上の第 4 節の実装状況）。
 
 HTTP 200 だけでは成功にしない。JSON と `StatusCode`、作成時の有効な Id、
 一覧時の構造を検査する。HTML 応答・空 JSON・型不一致は異常として分類する。

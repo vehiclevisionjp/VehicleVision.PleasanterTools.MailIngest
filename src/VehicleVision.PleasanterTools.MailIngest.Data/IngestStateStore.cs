@@ -225,6 +225,33 @@ public sealed class IngestStateStore(IDbConnectionFactory connections, TimeProvi
         return keys.ToHashSet(StringComparer.Ordinal);
     }
 
+    public async Task<IReadOnlyList<IngestItem>> ListByStateAsync(
+        string sourceId,
+        IngestState state,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = connections.Create();
+        var rows = await connection.QueryAsync<ItemRow>(new CommandDefinition(
+            Sql($"SELECT {ItemColumns} FROM [IngestItems] WHERE [SourceId] = @SourceId AND [State] = @State "
+                + "ORDER BY [UpdatedAt], [Id]"),
+            new { SourceId = sourceId, State = state.ToString() },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+        return rows.Take(limit).Select(r => r.ToItem()).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<IngestState, int>> CountByStateAsync(
+        string sourceId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = connections.Create();
+        var rows = await connection.QueryAsync<StateCountRow>(new CommandDefinition(
+            Sql("SELECT [State], COUNT(*) AS [Count] FROM [IngestItems] WHERE [SourceId] = @SourceId GROUP BY [State]"),
+            new { SourceId = sourceId },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+        return rows.ToDictionary(r => Enum.Parse<IngestState>(r.State), r => r.Count);
+    }
+
     public async Task SetItemAckStateAsync(Guid ingestItemId, AckState state, CancellationToken cancellationToken = default)
     {
         await using var connection = connections.Create();
@@ -354,6 +381,13 @@ public sealed class IngestStateStore(IDbConnectionFactory connections, TimeProvi
             LastErrorCode,
             new DateTimeOffset(DbTime.AsUtc(CreatedAt)),
             new DateTimeOffset(DbTime.AsUtc(UpdatedAt)));
+    }
+
+    private sealed class StateCountRow
+    {
+        public string State { get; set; } = string.Empty;
+
+        public int Count { get; set; }
     }
 
     private sealed class RunRow

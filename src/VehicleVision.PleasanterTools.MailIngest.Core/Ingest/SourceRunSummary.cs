@@ -39,6 +39,21 @@ public sealed class SourceRunSummary(string sourceId)
     /// <summary>分類できない例外で失敗した通数。</summary>
     public int Failed { get; internal set; }
 
+    /// <summary>実行の開始時に、再起動で残っていた送信中（<c>Sending</c>）を結果不明（<c>Unknown</c>）にした件数。</summary>
+    public int Interrupted { get; internal set; }
+
+    /// <summary>結果不明を外部キーで照合し、レコードの存在と内容の一致を確認して確定した件数（再作成していない）。</summary>
+    public int Reconciled { get; internal set; }
+
+    /// <summary>API 成功済みで受信後操作が残っていた項目を、API を呼ばずに完了した件数。</summary>
+    public int ResumedAck { get; internal set; }
+
+    /// <summary>照合の検索が失敗し（通信・429 など）、結果不明のまま次回へ残した件数。</summary>
+    public int ReconcileDeferred { get; internal set; }
+
+    /// <summary>429 などで待たずに次回へ回したとき、これより前には再開しない時刻。</summary>
+    public DateTimeOffset? RetryNotBefore { get; internal set; }
+
     /// <summary>ソース（またはその接続先）の処理を止めた理由。止めていなければ <c>null</c>。</summary>
     public string? StopReason { get; internal set; }
 
