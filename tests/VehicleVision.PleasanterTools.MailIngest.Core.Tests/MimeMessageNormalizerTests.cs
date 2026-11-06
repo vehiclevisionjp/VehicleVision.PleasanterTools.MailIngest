@@ -11,11 +11,6 @@ public sealed class MimeMessageNormalizerTests
 {
     private static readonly DateTimeOffset Fetched = new(2026, 11, 2, 0, 0, 0, TimeSpan.Zero);
 
-    static MimeMessageNormalizerTests()
-    {
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-    }
-
     private static byte[] Raw(params string[] lines) => Encoding.UTF8.GetBytes(string.Join("\r\n", lines));
 
     private static byte[] RawBytes(string header, byte[] body) =>
