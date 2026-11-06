@@ -32,7 +32,7 @@ public static class IngestStateTransitions
     private static readonly IReadOnlyDictionary<IngestState, IngestState[]> Allowed =
         new Dictionary<IngestState, IngestState[]>
         {
-            [IngestState.Pending] = [IngestState.Sending],
+            [IngestState.Pending] = [IngestState.Sending, IngestState.Held],
             [IngestState.Sending] = [IngestState.AckPending, IngestState.Unknown, IngestState.RetryPending, IngestState.Held],
             [IngestState.RetryPending] = [IngestState.Pending],
             [IngestState.Unknown] = [IngestState.AckPending, IngestState.Held],
@@ -143,6 +143,15 @@ public interface IIngestStateStore
     /// <summary>位置（UIDL / UID）から既処理の項目を引く。</summary>
     Task<IngestItem?> FindByLocationAsync(
         string sourceId, string locationKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 受信済みで、再取得しない位置の一覧（状態が <see cref="IngestState.Pending"/> と <see cref="IngestState.RetryPending"/> 以外の項目の位置）。
+    /// 取得時の既処理判定（<see cref="Mail.IMailSession.ListAsync"/> の <c>isKnown</c>）に使う。
+    /// </summary>
+    Task<IReadOnlySet<string>> ListSettledLocationKeysAsync(string sourceId, CancellationToken cancellationToken = default);
+
+    /// <summary>項目に結びつくすべての位置の受信後操作の状態を設定する。</summary>
+    Task SetItemAckStateAsync(Guid ingestItemId, AckState state, CancellationToken cancellationToken = default);
 
     Task<bool> SetAckStateAsync(
         string sourceId, string locationKey, AckState state, CancellationToken cancellationToken = default);

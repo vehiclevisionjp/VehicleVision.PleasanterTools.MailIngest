@@ -28,12 +28,6 @@ public static class MimeMessageNormalizer
     /// <summary>添付名の長さの上限。</summary>
     public const int MaxAttachmentNameLength = 255;
 
-    static MimeMessageNormalizer()
-    {
-        // ISO-2022-JP / Shift_JIS などの日本語コードページを使えるようにする
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-    }
-
     public static async Task<MimeNormalizeResult> NormalizeAsync(
         Stream raw,
         LimitsConfig limits,

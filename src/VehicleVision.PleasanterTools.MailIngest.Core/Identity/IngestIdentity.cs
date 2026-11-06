@@ -86,6 +86,28 @@ public static class ExternalKey
         hasher.Add(rawSha256);
         return hasher.Finish();
     }
+
+    /// <summary>保留専用の代替キーの方式版。Pleasanter へは送らない（状態 DB の識別だけに使う）。</summary>
+    public const string LocationVersion = "mailingest-external-key-location-v1";
+
+    /// <summary>
+    /// 外部キーを作れないメール（RAW が上限を超えた・同一キーで別内容など）を、保留として DB に残すための識別。
+    /// 接続先識別子・siteId・sourceId と、サーバ上の位置（UIDL / UIDVALIDITY + UID）から作る。
+    /// 位置は恒久の業務キーではないので、保留の記録専用で、重複排除には使わない。
+    /// </summary>
+    public static string CreateFromLocation(string destinationId, long siteId, string sourceId, string locationKey)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(destinationId);
+        ArgumentException.ThrowIfNullOrEmpty(sourceId);
+        ArgumentException.ThrowIfNullOrEmpty(locationKey);
+
+        using var hasher = new CanonicalHasher(LocationVersion);
+        hasher.Add(destinationId);
+        hasher.Add(siteId.ToString(CultureInfo.InvariantCulture));
+        hasher.Add(sourceId);
+        hasher.Add(locationKey);
+        return hasher.Finish();
+    }
 }
 
 /// <summary>同じメールかどうかを見る内容ハッシュ。DB にだけ保持し、Pleasanter へは送らない。</summary>
