@@ -4,10 +4,10 @@ on:
     branches: [develop, master]
 permissions:
   contents: read
+  pull-requests: write
 jobs:
   dependency-review:
     name: dependency-review
-    # 依存レビューも public か GHAS 有効のリポジトリだけで使える（変数 CODEQL_ENABLED=true で有効）。
     if: github.event.repository.visibility == 'public' || vars.CODEQL_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -19,3 +19,21 @@ jobs:
       - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
+          # コピーレフトを弾く。入ると商用ライセンスで提供できなくなる（LICENSING.md、規約 8）。
+          # 許可の一覧ではなく拒否の一覧にしてあるのは、許可の一覧だと 0BSD や ISC のような無害なものまで落ちて、
+          # 赤いのが当たり前になるため。例外を通したいときは、ここから外す前に LICENSING.md で判断すること。
+          deny-licenses: >-
+            GPL-1.0-only, GPL-1.0-or-later,
+            GPL-2.0-only, GPL-2.0-or-later,
+            GPL-3.0-only, GPL-3.0-or-later,
+            AGPL-1.0-only, AGPL-1.0-or-later,
+            AGPL-3.0-only, AGPL-3.0-or-later,
+            LGPL-2.0-only, LGPL-2.0-or-later,
+            LGPL-2.1-only, LGPL-2.1-or-later,
+            LGPL-3.0-only, LGPL-3.0-or-later,
+            MPL-1.1, MPL-2.0,
+            EPL-1.0, EPL-2.0,
+            CDDL-1.0, CDDL-1.1,
+            SSPL-1.0, BUSL-1.1,
+            CC-BY-NC-4.0, CC-BY-NC-SA-4.0
+          comment-summary-in-pr: always
