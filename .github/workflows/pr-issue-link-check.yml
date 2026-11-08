@@ -1,20 +1,77 @@
+# PR 本文の Issue 紐付けを見る。止めず、警告とコメントで気付かせるだけにする。
+# 紐付く Issue が無い PR は実際にあるため、必須チェックにしない。
+# PR のコードは実行しない（チェックアウトもしない）。見るのは本文だけ。
 name: PR Issue Link Check
 on:
   pull_request:
     types: [opened, edited, ready_for_review, synchronize]
     branches: [develop, master]
 permissions:
-  contents: read
+  issues: write
+  pull-requests: write
+concurrency:
+  group: pr-issue-link-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   check:
     name: issue-link
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: PR 本文を検査する
-        env:
-          BODY: ${{ github.event.pull_request.body }}
-        run: |
-          if ! printf '%s' "$BODY" | grep -Eqi '(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]]+#[0-9]+'; then
-            echo '::warning::PR 本文に Closes #N を書いて Issue と紐付けてください。'
-          fi
+      - name: 紐付けを確かめてコメントする
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const body = context.payload.pull_request.body ?? '';
+
+            // GitHub が Issue を自動で閉じる書き方
+            // <https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue>
+            const pattern = /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#\d+/i;
+            const linked = pattern.test(body);
+
+            if (!linked) {
+              core.warning('PR 本文に Closes #N を書いて Issue と紐付けてください。');
+            }
+
+            const marker = '<!-- pr-issue-link-check -->';
+            const message = linked
+              ? `${marker}\n✅ Issue との紐付け（\`Closes #N\`）を確認しました。`
+              : `${marker}\n⚠️ **PR 本文に \`Closes #N\` が見つかりません。**\n\n`
+                + '規約では PR と Issue を必ず紐付けることになっています。\n\n'
+                + '**マージ時に Issue が自動で閉じられ、何が終わって何が残っているかを追えます。**\n\n'
+                + '紐付く Issue が無い PR であれば、このコメントは無視して構いません。';
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+              });
+              const existing = comments.find((comment) => (comment.body ?? '').includes(marker));
+
+              if (existing !== undefined) {
+                // 同じ内容なら触らない。通知を無駄に飛ばさない
+                if (existing.body !== message) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: existing.id,
+                    body: message,
+                  });
+                }
+                return;
+              }
+
+              // 紐付いているだけの PR に、わざわざコメントを足さない
+              if (!linked) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: message,
+                });
+              }
+            } catch (error) {
+              // フォークからの PR はトークンが読み取り専用で、コメントできない。止めない
+              core.warning(`コメントを書けませんでした: ${error.message}`);
+            }
