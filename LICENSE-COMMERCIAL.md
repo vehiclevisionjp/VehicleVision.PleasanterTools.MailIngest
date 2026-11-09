@@ -49,7 +49,7 @@ Core は AGPL-3.0-or-later と商用ライセンスのデュアルライセン�
 **本ソフトウェアの商用ライセンスは、本ソフトウェアに組み込まれた Core を含みます。**
 
 - 本ソフトウェアの商用契約を結んだ方には、組み込まれた Core を、本ソフトウェアと同じ条件で提供します
-- Core を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、個別に契約します
+- Core を単体で利用する場合と、VehicleVision.PleasanterTools 以外へ組み込む場合は、個別に契約します
 <!-- license:end core-terms -->
 
 <!-- license:begin dotnetclient-terms=on -->
@@ -61,7 +61,7 @@ DotNetClient は LGPL-3.0-or-later・AGPL-3.0-or-later・商用ライセンス�
 **本ソフトウェアの商用ライセンスは、本ソフトウェアに組み込まれた DotNetClient を含みます。**
 
 - 本ソフトウェアの商用契約を結んだ方には、組み込まれた DotNetClient を、本ソフトウェアと同じ条件で提供します
-- DotNetClient を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、DotNetClient の条件によります
+- DotNetClient を単体で利用する場合と、VehicleVision.PleasanterTools 以外へ組み込む場合は、DotNetClient の条件によります
 <!-- license:end dotnetclient-terms -->
 
 <!-- license:begin sni-terms=on -->
