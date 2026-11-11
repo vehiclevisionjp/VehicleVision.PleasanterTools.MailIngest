@@ -80,7 +80,7 @@ public sealed class MailAuthenticationTests
         var both = new Dictionary<string, string?> { ["X"] = "a", ["X_FILE"] = "/run/x" };
         var none = new Dictionary<string, string?>();
 
-        Assert.Contains("同時", Assert.Throws<SecretResolutionException>(() => SecretResolver.Resolve("X", n => both.GetValueOrDefault(n))).Message, StringComparison.Ordinal);
+        Assert.Contains("are set", Assert.Throws<SecretResolutionException>(() => SecretResolver.Resolve("X", n => both.GetValueOrDefault(n))).Message, StringComparison.Ordinal);
         Assert.Throws<SecretResolutionException>(() => SecretResolver.Resolve("X", n => none.GetValueOrDefault(n)));
     }
 

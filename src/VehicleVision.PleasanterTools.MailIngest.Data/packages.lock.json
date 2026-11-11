@@ -4,9 +4,9 @@
     "net10.0": {
       "VehicleVision.PleasanterTools.Core.Data": {
         "type": "Direct",
-        "requested": "[0.1.1, )",
-        "resolved": "0.1.1",
-        "contentHash": "NCI/exlNJMJ1A5FPuUDj3AKtG+OReyueP4wzIZ1U02gTcNVRhMkHe9dPP2XBXUxXkHbefZ7WcPBcPlBv/apHHA==",
+        "requested": "[0.2.0, )",
+        "resolved": "0.2.0",
+        "contentHash": "bKCLfb56optQP4nxuI2KH1p2DcaAOD/9JVm3s5yuX1eFVBhC04cFpQaB0VFNopjfhue/xmXV6VWyAaN9DlLQnA==",
         "dependencies": {
           "Dapper": "2.1.89",
           "FluentMigrator": "8.0.1",
@@ -400,6 +400,19 @@
         "resolved": "4.6.1",
         "contentHash": "+RJT4qaekpZ7DDLhf+LTjq+E48jieKiY9ulJ+BoxKmZblIJfIJT8Ufcaa/clQqnYvWs8jugfGSMu8ylS0caG0w=="
       },
+      "VehicleVision.PleasanterTools.Core.Cli": {
+        "type": "Transitive",
+        "resolved": "0.2.0",
+        "contentHash": "O2ogIkArvTjk7pP798RRrimBT2abXR1ugMJa+X99lM7FTz8/8YMY0WO0AZOVwQ/V73pQjBIRXQ6lG31lq3lkSg==",
+        "dependencies": {
+          "VehicleVision.PleasanterTools.Core.Contracts": "0.2.0"
+        }
+      },
+      "VehicleVision.PleasanterTools.Core.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.2.0",
+        "contentHash": "7ovFjBrC3E/6yuo63Vh2S8EkZdq/Pb9u3wow+5KOg7mBYye560MQ/xnkidugl5/0WaLkT+DmbuGr6ubNb+sXwg=="
+      },
       "VehicleVision.PleasanterTools.DotNetClient": {
         "type": "Transitive",
         "resolved": "0.4.0",
@@ -408,6 +421,8 @@
       "vehiclevision.pleasantertools.mailingest.core": {
         "type": "Project",
         "dependencies": {
+          "VehicleVision.PleasanterTools.Core.Cli": "[0.2.0, )",
+          "VehicleVision.PleasanterTools.Core.Contracts": "[0.2.0, )",
           "VehicleVision.PleasanterTools.DotNetClient": "[0.4.0, )"
         }
       }

@@ -7,7 +7,7 @@
   <ItemGroup>
     <!-- DB の基盤（接続・暗号化の設定・DbTime・マイグレーションと排他・SqlDialect の汎用部分）。Core のパッケージ。
          **Core が持つ依存（Dapper・FluentMigrator・DB ドライバなど）は、ここで宣言し直さない**（版のずれの原因になる）。Core 経由で受け取る -->
-    <PackageReference Include="VehicleVision.PleasanterTools.Core.Data" Version="0.1.1" />
+    <PackageReference Include="VehicleVision.PleasanterTools.Core.Data" Version="0.2.0" />
   </ItemGroup>
 
   <ItemGroup>

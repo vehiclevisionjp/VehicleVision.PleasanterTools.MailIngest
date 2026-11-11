@@ -29,11 +29,11 @@ public static class SecretEnvironmentChecker
             var file = !string.IsNullOrEmpty(lookup(name + "_FILE"));
             if (direct && file)
             {
-                errors.Add(new ConfigIssue(path, "SecretConflict", "環境変数と _FILE が同時に指定されている。どちらか一方にする。"));
+                errors.Add(new ConfigIssue(path, "SecretConflict", "The environment variable and its _FILE variable are both set. Set only one."));
             }
             else if (!direct && !file)
             {
-                warnings.Add(new ConfigIssue(path, "SecretNotSet", "環境変数も _FILE も設定されていない。実行時には必要。"));
+                warnings.Add(new ConfigIssue(path, "SecretNotSet", "Neither the environment variable nor its _FILE variable is set. It is required at run time."));
             }
         }
     }

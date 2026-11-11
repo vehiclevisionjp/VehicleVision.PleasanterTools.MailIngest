@@ -61,7 +61,7 @@ public sealed class MappedRecord
     {
         if (Values is null)
         {
-            throw new InvalidOperationException("失敗した対応づけから API レコードは作れない。");
+            throw new InvalidOperationException("An API record cannot be built from a failed mapping.");
         }
 
         var record = new Dictionary<string, object?>(StringComparer.Ordinal);
@@ -148,41 +148,41 @@ public sealed partial class MappingPlan
 
             if (!SourceFields.TryGetValue(rule.Source, out var field))
             {
-                errors.Add(new MappingIssue(location, "UnknownSource", "未知の入力項目。"));
+                errors.Add(new MappingIssue(location, "UnknownSource", "Unknown input field."));
             }
 
             var column = ColumnInfo.Parse(rule.Target);
             if (column is null)
             {
-                errors.Add(new MappingIssue(location, "UnknownTarget", "未知・対応外の出力列。"));
+                errors.Add(new MappingIssue(location, "UnknownTarget", "Unknown or unsupported output column."));
             }
             else if (reservedColumns.Contains(rule.Target, StringComparer.Ordinal))
             {
-                errors.Add(new MappingIssue(location, "ReservedColumn", "予約列（外部キー・投射ハッシュ）は指定できない。"));
+                errors.Add(new MappingIssue(location, "ReservedColumn", "Reserved columns (external key, projection hash) cannot be set."));
             }
             else if (column.FixedOnly)
             {
-                errors.Add(new MappingIssue(location, "FixedValueOnly", "この列は固定値だけ指定できる。"));
+                errors.Add(new MappingIssue(location, "FixedValueOnly", "Only a fixed value can be set for this column."));
             }
             else if (!used.Add(rule.Target))
             {
-                errors.Add(new MappingIssue(location, "DuplicateTarget", "同じ出力列が複数指定されている。"));
+                errors.Add(new MappingIssue(location, "DuplicateTarget", "The same output column is set more than once."));
             }
 
             if (field is not null)
             {
                 if (field.Kind == ValueKind.StringArray && rule.Join is null)
                 {
-                    errors.Add(new MappingIssue(location, "JoinRequired", "配列の入力には join が必要。"));
+                    errors.Add(new MappingIssue(location, "JoinRequired", "An array input requires join."));
                 }
                 else if (field.Kind != ValueKind.StringArray && rule.Join is not null)
                 {
-                    errors.Add(new MappingIssue(location, "JoinNotAllowed", "join は配列にだけ指定できる。"));
+                    errors.Add(new MappingIssue(location, "JoinNotAllowed", "join can be set only for arrays."));
                 }
 
                 if (column is { FixedOnly: false } && !IsCompatible(field.Kind, column.Type))
                 {
-                    errors.Add(new MappingIssue(location, "TypeMismatch", "入力項目の型と出力列の型が合わない。"));
+                    errors.Add(new MappingIssue(location, "TypeMismatch", "The input field type does not match the output column type."));
                 }
             }
 
@@ -191,7 +191,7 @@ public sealed partial class MappingPlan
             {
                 if (!TryConvert(rule.Default, column, out defaultValue))
                 {
-                    errors.Add(new MappingIssue(location, "InvalidDefault", "既定値を出力列の型へ変換できない。"));
+                    errors.Add(new MappingIssue(location, "InvalidDefault", "The default value cannot be converted to the output column type."));
                 }
             }
 
@@ -210,19 +210,19 @@ public sealed partial class MappingPlan
                 var column = ColumnInfo.Parse(name);
                 if (column is null)
                 {
-                    errors.Add(new MappingIssue(location, "UnknownTarget", "未知・対応外の出力列。"));
+                    errors.Add(new MappingIssue(location, "UnknownTarget", "Unknown or unsupported output column."));
                 }
                 else if (reservedColumns.Contains(name, StringComparer.Ordinal))
                 {
-                    errors.Add(new MappingIssue(location, "ReservedColumn", "予約列は指定できない。"));
+                    errors.Add(new MappingIssue(location, "ReservedColumn", "Reserved columns cannot be set."));
                 }
                 else if (used.Contains(name))
                 {
-                    errors.Add(new MappingIssue(location, "FixedValueConflict", "対応づけと固定値で同じ列を指定できない。"));
+                    errors.Add(new MappingIssue(location, "FixedValueConflict", "The same column cannot be set by both a mapping and a fixed value."));
                 }
                 else if (!TryConvertFixed(raw, column, out var value))
                 {
-                    errors.Add(new MappingIssue(location, "InvalidFixedValue", "固定値を出力列の型へ変換できない。"));
+                    errors.Add(new MappingIssue(location, "InvalidFixedValue", "The fixed value cannot be converted to the output column type."));
                 }
                 else
                 {
@@ -256,14 +256,14 @@ public sealed partial class MappingPlan
             {
                 if (items.Any(HasLineBreakOrNul))
                 {
-                    errors.Add(new MappingIssue(mapping.Location, "ControlCharacter", "単一行の項目に改行・NUL が含まれている。"));
+                    errors.Add(new MappingIssue(mapping.Location, "ControlCharacter", "A single-line field contains a line break or NUL."));
                     continue;
                 }
             }
             else if (text is not null
                 && (mapping.Field.Name == "bodyText" ? text.Contains('\0') : HasLineBreakOrNul(text)))
             {
-                errors.Add(new MappingIssue(mapping.Location, "ControlCharacter", "単一行の項目に改行・NUL が含まれている。"));
+                errors.Add(new MappingIssue(mapping.Location, "ControlCharacter", "A single-line field contains a line break or NUL."));
                 continue;
             }
 
@@ -285,7 +285,7 @@ public sealed partial class MappingPlan
 
                     if (!TryConvert(text, mapping.Column, out converted))
                     {
-                        errors.Add(new MappingIssue(mapping.Location, "ConversionFailed", "値を出力列の型へ変換できない。"));
+                        errors.Add(new MappingIssue(mapping.Location, "ConversionFailed", "The value cannot be converted to the output column type."));
                         continue;
                     }
 
@@ -299,7 +299,7 @@ public sealed partial class MappingPlan
 
             if (!FitsLength(mapping.Column.Name, converted, context))
             {
-                errors.Add(new MappingIssue(mapping.Location, "TooLong", "サイトの長さ制限を超える。切り捨てない。"));
+                errors.Add(new MappingIssue(mapping.Location, "TooLong", "The value exceeds the length limit of the site. It is not truncated."));
                 continue;
             }
 

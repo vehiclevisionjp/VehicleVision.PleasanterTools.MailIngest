@@ -95,7 +95,7 @@ public sealed class PasswordAuthenticator(MailCredentials credentials, IReadOnly
         var plan = PasswordAuthenticationPlanner.Plan(protocol, allowedMechanisms, advertised, imapLoginDisabled, apop)
             ?? throw new MailConnectionException(
                 MailFailureKind.NoAllowedAuthentication,
-                "設定が許可する認証方式に、サーバが対応していない。認証は送っていない。");
+                "The server supports none of the authentication mechanisms allowed by the configuration. No authentication was sent.");
 
         try
         {
@@ -130,7 +130,7 @@ public sealed class PasswordAuthenticator(MailCredentials credentials, IReadOnly
         catch (AuthenticationException)
         {
             // 資格情報の拒否。ユーザー名・サーバの応答文は載せない
-            throw new MailConnectionException(MailFailureKind.Authentication, "認証が拒否された。");
+            throw new MailConnectionException(MailFailureKind.Authentication, "Authentication was rejected.");
         }
     }
 }

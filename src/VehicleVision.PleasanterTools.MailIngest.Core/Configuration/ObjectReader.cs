@@ -19,7 +19,7 @@ internal sealed class ObjectReader
         {
             if (!_names.Add(property.Name))
             {
-                issues.Error(Join(property.Name), "DuplicateProperty", "同じプロパティが重複している。");
+                issues.Error(Join(property.Name), "DuplicateProperty", "The same property is duplicated.");
             }
         }
     }
@@ -30,7 +30,7 @@ internal sealed class ObjectReader
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
-            issues.Error(path, "InvalidType", "オブジェクトが必要。");
+            issues.Error(path, "InvalidType", "An object is required.");
             return null;
         }
 
@@ -54,7 +54,7 @@ internal sealed class ObjectReader
         {
             if (required)
             {
-                _issues.Error(Join(name), "Missing", "必須。");
+                _issues.Error(Join(name), "Missing", "Required.");
             }
 
             return null;
@@ -70,7 +70,7 @@ internal sealed class ObjectReader
         {
             if (raw is null && required)
             {
-                _issues.Error(Join(name), "Missing", "必須。");
+                _issues.Error(Join(name), "Missing", "Required.");
             }
 
             return defaultValue;
@@ -78,7 +78,7 @@ internal sealed class ObjectReader
 
         if (raw.Value.ValueKind != JsonValueKind.String)
         {
-            _issues.Error(Join(name), "InvalidType", "文字列が必要。");
+            _issues.Error(Join(name), "InvalidType", "A string is required.");
             return defaultValue;
         }
 
@@ -92,7 +92,7 @@ internal sealed class ObjectReader
         {
             if (required)
             {
-                _issues.Error(Join(name), "Missing", "必須。");
+                _issues.Error(Join(name), "Missing", "Required.");
             }
 
             return defaultValue;
@@ -100,7 +100,7 @@ internal sealed class ObjectReader
 
         if (raw.Value.ValueKind != JsonValueKind.Number || !raw.Value.TryGetInt32(out var value))
         {
-            _issues.Error(Join(name), "InvalidType", "整数が必要。");
+            _issues.Error(Join(name), "InvalidType", "An integer is required.");
             return defaultValue;
         }
 
@@ -114,7 +114,7 @@ internal sealed class ObjectReader
         {
             if (required)
             {
-                _issues.Error(Join(name), "Missing", "必須。");
+                _issues.Error(Join(name), "Missing", "Required.");
             }
 
             return defaultValue;
@@ -122,7 +122,7 @@ internal sealed class ObjectReader
 
         if (raw.Value.ValueKind != JsonValueKind.Number || !raw.Value.TryGetInt64(out var value))
         {
-            _issues.Error(Join(name), "InvalidType", "整数が必要。");
+            _issues.Error(Join(name), "InvalidType", "An integer is required.");
             return defaultValue;
         }
 
@@ -136,7 +136,7 @@ internal sealed class ObjectReader
         {
             if (required)
             {
-                _issues.Error(Join(name), "Missing", "必須。");
+                _issues.Error(Join(name), "Missing", "Required.");
             }
 
             return defaultValue;
@@ -144,7 +144,7 @@ internal sealed class ObjectReader
 
         if (raw.Value.ValueKind != JsonValueKind.Number || !raw.Value.TryGetDecimal(out var value))
         {
-            _issues.Error(Join(name), "InvalidType", "数値が必要。");
+            _issues.Error(Join(name), "InvalidType", "A number is required.");
             return defaultValue;
         }
 
@@ -161,7 +161,7 @@ internal sealed class ObjectReader
 
         if (raw.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
         {
-            _issues.Error(Join(name), "InvalidType", "true / false が必要。");
+            _issues.Error(Join(name), "InvalidType", "true or false is required.");
             return defaultValue;
         }
 
@@ -175,7 +175,7 @@ internal sealed class ObjectReader
         {
             if (!_consumed.Contains(name))
             {
-                _issues.Error(Join(name), "UnknownProperty", "未知のプロパティ。");
+                _issues.Error(Join(name), "UnknownProperty", "Unknown property.");
             }
         }
     }

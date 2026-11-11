@@ -196,7 +196,7 @@ public static class ProjectionHash
         decimal number => "n:" + Normalize(number).ToString(CultureInfo.InvariantCulture),
         bool flag => flag ? "b:true" : "b:false",
         DateTimeOffset date => "d:" + date.ToUniversalTime().UtcTicks.ToString(CultureInfo.InvariantCulture),
-        _ => throw new ArgumentException("対応外の値の型。", nameof(value)),
+        _ => throw new ArgumentException("Unsupported value type.", nameof(value)),
     };
 
     /// <summary>末尾のゼロを除き、1.0 と 1 を同じ表現にする。</summary>

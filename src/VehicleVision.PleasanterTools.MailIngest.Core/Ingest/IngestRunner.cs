@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using VehicleVision.PleasanterTools.MailIngest.Core.Configuration;
 using VehicleVision.PleasanterTools.MailIngest.Core.Mail;
 using VehicleVision.PleasanterTools.MailIngest.Core.State;
@@ -35,26 +33,29 @@ public static class IngestExitCode
         var remaining = false;
         foreach (var s in sources)
         {
-            if (s.StopReason is not null
-                || s.Failed > 0
-                || s.Held > 0
-                || s.Unknown > 0
-                || s.RetryLater > 0
-                || s.ReconcileDeferred > 0
-                || s.Deferred > 0
-                || s.Outstanding(IngestState.Unknown) > 0
-                || s.Outstanding(IngestState.RetryPending) > 0
-                || s.Outstanding(IngestState.Pending) > 0
-                || s.Outstanding(IngestState.AckPending) > 0
-                || s.Outstanding(IngestState.Sending) > 0)
-            {
-                errors = true;
-            }
-
+            errors |= HasErrors(s);
             remaining |= s.HasMore;
         }
 
         return errors ? Errors : remaining ? Remaining : Success;
+    }
+
+    /// <summary>ソースの結果が、終了コード 1（処理エラー・照合待ち）に当たるか。<see cref="From"/> と同じ判定。</summary>
+    public static bool HasErrors(SourceRunSummary s)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        return s.StopReason is not null
+            || s.Failed > 0
+            || s.Held > 0
+            || s.Unknown > 0
+            || s.RetryLater > 0
+            || s.ReconcileDeferred > 0
+            || s.Deferred > 0
+            || s.Outstanding(IngestState.Unknown) > 0
+            || s.Outstanding(IngestState.RetryPending) > 0
+            || s.Outstanding(IngestState.Pending) > 0
+            || s.Outstanding(IngestState.AckPending) > 0
+            || s.Outstanding(IngestState.Sending) > 0;
     }
 }
 
@@ -68,15 +69,8 @@ public sealed record IngestRunSummary(
     int CreateCalls,
     int? ApiLimitRemaining)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() },
-    };
-
-    /// <summary>人が読む形（英語の固定文）。</summary>
-    public string ToText()
+    /// <summary>人が読む形の行（英語の固定文）。CLI は、1 行ずつ <c>[INFO]</c> を付けて出す。</summary>
+    public IReadOnlyList<string> ToLines()
     {
         var lines = new List<string>
         {
@@ -111,11 +105,11 @@ public sealed record IngestRunSummary(
             lines.Add("No new messages were processed. This does not by itself confirm that every source is healthy.");
         }
 
-        return string.Join(Environment.NewLine, lines);
+        return lines;
     }
 
-    /// <summary>機械可読の形。</summary>
-    public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
+    /// <summary>人が読む形（<see cref="ToLines"/> を改行でつなぐ）。</summary>
+    public string ToText() => string.Join(Environment.NewLine, ToLines());
 }
 
 /// <summary>起動時の検査の結果。</summary>
@@ -198,7 +192,7 @@ public sealed class IngestRunner(
         ArgumentNullException.ThrowIfNull(check);
         if (!check.IsValid)
         {
-            throw new InvalidOperationException("起動時の検査にエラーがある。実行しない。");
+            throw new InvalidOperationException("The startup check has errors. The run is not started.");
         }
 
         var started = _time.GetUtcNow();

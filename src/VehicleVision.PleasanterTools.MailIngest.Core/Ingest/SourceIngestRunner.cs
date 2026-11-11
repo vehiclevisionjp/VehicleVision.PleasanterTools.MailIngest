@@ -567,12 +567,12 @@ public sealed class SourceIngestRunner(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // API は成功している。受信後操作へ進まず、失敗として止める（Sending が残る → 次回は結果不明として照合する）
-            throw new IngestCommitException("API 成功後の DB 確定に失敗した。");
+            throw new IngestCommitException("Committing to the database after the API call succeeded failed.");
         }
 
         if (!committed)
         {
-            throw new IngestCommitException("API 成功後の DB 確定が、状態の食い違いで行えなかった。");
+            throw new IngestCommitException("Committing to the database after the API call succeeded was rejected because of a state mismatch.");
         }
 
         await CompleteAckAsync(plan, item, cancellationToken).ConfigureAwait(false);
