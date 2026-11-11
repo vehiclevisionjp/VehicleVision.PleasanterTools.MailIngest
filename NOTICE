@@ -2,7 +2,7 @@ VehicleVision.PleasanterTools.MailIngest
 Copyright (C) PMC Co., Ltd. IT Solution Div.
 SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
 デュアル提供の条件は LICENSING.md / LICENSE-COMMERCIAL.md を参照。
-MailIngest は Core.Data（状態 DB）と MimeKit（MIME 解析）と MailKit（IMAP / POP3 の受信）を依存に追加した。
+MailIngest は Core.Data（状態 DB）・Core.Cli・Core.Contracts（CLI の共通部品・共通の名前と値）と MimeKit（MIME 解析）と MailKit（IMAP / POP3 の受信）を依存に追加した。
 
 開発運用と Actions の構成、および指示同期・参照更新スクリプトは次を参考にしています。
 VehicleVision.PleasanterTools.Questionnaire
@@ -17,7 +17,11 @@ https://github.com/Implem/Implem.Pleasanter
 サブモジュール内の LICENSE を参照。成果物には含めない。
 
 サードパーティソフトウェア（配布物に含む）。参照日 2026-11-02。名称 / バージョン / ライセンス / 入手元
-  VehicleVision.PleasanterTools.Core.Data 0.1.1 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
+  VehicleVision.PleasanterTools.Core.Cli 0.2.0 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
+    （CLI の共通部品。引数の解析・ヘルプ・出力・終了コード・補完。Core.Contracts に依存する）
+  VehicleVision.PleasanterTools.Core.Contracts 0.2.0 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
+    （製品群で共通の名前と値。環境変数の名前・終了コード・JSON の項目名）
+  VehicleVision.PleasanterTools.Core.Data 0.2.0 / AGPL-3.0-or-later または商用（自社。Core リポジトリ） / https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
     （DB の基盤。接続・DbTime・マイグレーションと排他・SqlDialect の汎用部分。下の Dapper・FluentMigrator・DB ドライバは、これが推移的に伴う。IBM Db2・Firebird のドライバは伴わない）
   Dapper 2.1.89 / Apache-2.0 / https://www.nuget.org/packages/Dapper
   FluentMigrator 8.0.1 ほか FluentMigrator.Runner.Core・Runner.SQLite・Runner.SqlServer・Runner.Postgres・Runner.MySql など FluentMigrator.* 8.0.1 / Apache-2.0 / https://www.nuget.org/packages/FluentMigrator
@@ -58,6 +62,8 @@ NuGet では PackageLicenseFile で LICENSING.md を表示する（SPDX の式�
 VehicleVision.PleasanterTools の各ツールが組み込む場合は、呼び出し元と一体として扱う（LICENSING.md の「例外: 当社の共通部品 DotNetClient」、Template #114・#117）。
 
 テスト用の直接依存（配布物には含めない）:
+VehicleVision.PleasanterTools.Core.Cli.Testing 0.2.0 — AGPL-3.0-or-later または商用（自社。CLI の共通仕様の契約テスト。Core リポジトリ）
+https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core
 Microsoft.NET.Test.Sdk — MIT
 https://github.com/microsoft/vstest/blob/main/LICENSE
 xunit — Apache-2.0

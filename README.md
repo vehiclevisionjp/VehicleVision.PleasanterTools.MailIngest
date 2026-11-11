@@ -25,11 +25,11 @@ TLS は必須にせず、平文 POP3（110）・IMAP（143）も明示設定で�
 
 ## 使い方
 
-接続確認の CLI を動かすには、接続先を環境変数で渡します。
+接続確認の CLI を動かすには、接続先を環境変数で渡します（API キーは `VVPT_PLEASANTER_API_KEY` の代わりに、キーを書いたファイルの絶対パスを `VVPT_PLEASANTER_API_KEY_FILE` で渡せます。両方の指定はできません）。
 
 ```bash
-export PLEASANTER_BASE_URL=https://pleasanter.example.com
-export PLEASANTER_API_KEY='<環境で管理する秘密値>'
+export VVPT_PLEASANTER_BASE_URL=https://pleasanter.example.com
+export VVPT_PLEASANTER_API_KEY='<環境で管理する秘密値>'
 dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- check
 ```
 
@@ -46,11 +46,35 @@ dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- migrate
 dotnet run --project src/VehicleVision.PleasanterTools.MailIngest.Cli -- run --config <設定ファイル.json> [--json]
 ```
 
-秘密（Pleasanter の API キー・メールのユーザー名とパスワード）は、設定が指す環境変数名の `NAME` か `NAME_FILE` から読みます。終了コードは 0 = 成功、1 = 処理エラー・照合待ちあり、2 = 起動設定の不正（何も実行していない）、3 = 件数上限で未処理が残っている、です。
-標準出力は運用サマリー（件数だけ。`--json` で JSON）、標準エラーは警告・構造化ログです。**添付は Pleasanter へ転送しません。**
+引数は `--config 値`・`--config=値`・`-config 値`・`/config:値` のどれでも書けます（`--help`・`--version`・`completion <shell>` もあります）。
+全コマンド（`check`・`validate`・`run`・`migrate`・`migrate-status`）が `--json` に対応し、標準出力へ 1 行の JSON を出します。
+
+秘密（Pleasanter の API キー・メールのユーザー名とパスワード）は、`run` では設定が指す環境変数名の `NAME` か `NAME_FILE` から読みます
+（`VVPT_PLEASANTER_*` は `check` だけが読みます）。
+終了コードは次のとおりです。
+
+| コード | 意味 |
+| --- | --- |
+| 0 | 成功。`validate` で問題なし |
+| 1 | 処理エラー・照合待ちあり（`run`）。`validate` で問題あり。`migrate-status` で未適用あり |
+| 2 | 起動設定・使い方の誤り（何も実行していない）。`validate` では設定ファイルが無い・読めない |
+| 3 | `run` が件数上限で未処理が残っている |
+| 130 | 中断（Ctrl+C。1 回目で安全に止まり、2 回目ですぐ終了します） |
+
+標準出力は結果（運用サマリーは `[INFO]` 付き。件数だけ。`validate` の指摘も結果なので標準出力）、標準エラーは警告・エラー・構造化ログです。
+出力は英語・ASCII です。**添付は Pleasanter へ転送しません。**
 **実機のメールサーバ・Pleasanter では未検証です。**
 
-`check` の秘密設定は環境変数のみで、`_FILE` は未対応です（`validate` は `NAME` と `NAME_FILE` の同時指定を検査します）。
+### 環境変数
+
+| 名前 | 用途 |
+| --- | --- |
+| `VVPT_PLEASANTER_BASE_URL`・`VVPT_PLEASANTER_API_KEY`（または `VVPT_PLEASANTER_API_KEY_FILE`） | `check` の接続先 |
+| 設定ファイルが指す名前（例: `MAILINGEST_PLEASANTER_API_KEY`。`NAME` / `NAME_FILE`） | `run` の API キー・メールの資格情報 |
+| `MAILINGEST_DB_PROVIDER`・`MAILINGEST_DB_CONNECTIONSTRING`・`MAILINGEST_DB_ALLOW_INSECURE` | 状態 DB |
+
+旧名の `PLEASANTER_BASE_URL`・`PLEASANTER_API_KEY` は受け付けません（読まず、検出も案内もしません）。
+旧名だけを設定した環境の `check` は、新名が未設定として終了コード 2 で止まります。`check` を使う環境は、新名へ書き換えてください。
 開発・検証手順は [開発ガイド](_documents/開発ガイド.md)、
 運用規約は [開発運用](_documents/開発運用.md) にあります。
 
