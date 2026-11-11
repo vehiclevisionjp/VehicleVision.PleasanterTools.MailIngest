@@ -7,5 +7,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/VehicleVision.PleasanterTools.MailIngest.Core.Tests/VehicleVision.PleasanterTools.MailIngest.Core.Tests.csproj" />
+    <Project Path="tests/VehicleVision.PleasanterTools.MailIngest.Cli.Tests/VehicleVision.PleasanterTools.MailIngest.Cli.Tests.csproj" />
   </Folder>
 </Solution>

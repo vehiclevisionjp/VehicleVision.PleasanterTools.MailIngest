@@ -103,7 +103,7 @@ public sealed class IngestStateStore(IDbConnectionFactory connections, TimeProvi
     {
         if (!IngestStateTransitions.IsAllowed(from, to))
         {
-            throw new InvalidOperationException($"許されない状態遷移: {from} -> {to}");
+            throw new InvalidOperationException($"Invalid state transition: {from} -> {to}");
         }
 
         data ??= new TransitionData();

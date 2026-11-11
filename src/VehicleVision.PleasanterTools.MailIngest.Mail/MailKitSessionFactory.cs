@@ -51,7 +51,7 @@ public sealed class MailKitSessionFactory(
         if (source.CertificateValidation.Mode != CertificateValidationMode.Strict)
         {
             // 証明書の例外（AllowUntrusted / Pinned）は未決事項のため未実装。緩めず、停止する
-            throw new MailConnectionException(MailFailureKind.Protocol, "証明書検証 Strict 以外は未対応。");
+            throw new MailConnectionException(MailFailureKind.Protocol, "Only Strict certificate validation is supported.");
         }
 
         var authenticator = authenticatorFactory?.Invoke(source, credentials)
@@ -73,7 +73,7 @@ public sealed class MailKitSessionFactory(
         try
         {
             await ConnectAndAuthenticateAsync(client, source, options, authenticator, cancellationToken).ConfigureAwait(false);
-            var imap = source.Imap ?? throw new MailConnectionException(MailFailureKind.Protocol, "IMAP の設定が無い。");
+            var imap = source.Imap ?? throw new MailConnectionException(MailFailureKind.Protocol, "The IMAP settings are missing.");
             return await ImapMailSession.OpenAsync(client, imap, source.Limits, cancellationToken).ConfigureAwait(false);
         }
         catch
@@ -96,7 +96,7 @@ public sealed class MailKitSessionFactory(
             if (!client.Capabilities.HasFlag(Pop3Capabilities.UIDL))
             {
                 // UIDL が無いと、leave でも毎回すべてを再取得することになる。対応可否は未決のため、停止する
-                throw new MailConnectionException(MailFailureKind.Protocol, "POP3 サーバが UIDL に対応していない。");
+                throw new MailConnectionException(MailFailureKind.Protocol, "The POP3 server does not support UIDL.");
             }
 
             return new Pop3MailSession(client);
@@ -126,15 +126,15 @@ public sealed class MailKitSessionFactory(
         catch (Exception ex) when (ex is SslHandshakeException or System.Security.Authentication.AuthenticationException or NotSupportedException)
         {
             // TLS の確立・昇格の失敗（STARTTLS 非対応を含む）。認証していない。平文へ降格しない
-            throw new MailConnectionException(MailFailureKind.Tls, "TLS の確立・昇格に失敗した。認証は送っていない。");
+            throw new MailConnectionException(MailFailureKind.Tls, "Establishing or upgrading TLS failed. No authentication was sent.");
         }
         catch (Exception ex) when (ex is SocketException or IOException or TimeoutException or ServiceNotConnectedException)
         {
-            throw new MailConnectionException(MailFailureKind.Unavailable, "メールサーバへ接続できない。");
+            throw new MailConnectionException(MailFailureKind.Unavailable, "Cannot connect to the mail server.");
         }
         catch (Exception ex) when (ex is ProtocolException or CommandException)
         {
-            throw new MailConnectionException(MailFailureKind.Protocol, "メールサーバのプロトコルの異常。");
+            throw new MailConnectionException(MailFailureKind.Protocol, "A mail server protocol error occurred.");
         }
 
         if (source.Tls == TlsMode.None)
@@ -143,7 +143,7 @@ public sealed class MailKitSessionFactory(
             diagnostics?.Warning(
                 source.SourceId,
                 "PlaintextConnection",
-                $"ソース {source.SourceId}: 平文接続。認証情報と本文が暗号化されない。信頼できるネットワーク内だけで使う。");
+                $"Source {source.SourceId}: plaintext connection. Credentials and message bodies are not encrypted. Use it only inside a trusted network.");
         }
 
         try
@@ -163,11 +163,11 @@ public sealed class MailKitSessionFactory(
         catch (Exception ex) when (ex is SocketException or IOException or TimeoutException or OperationCanceledException
             or ServiceNotConnectedException)
         {
-            throw new MailConnectionException(MailFailureKind.Unavailable, "認証中にメールサーバとの通信が途切れた。");
+            throw new MailConnectionException(MailFailureKind.Unavailable, "The connection to the mail server was lost during authentication.");
         }
         catch (Exception ex) when (ex is ProtocolException or CommandException)
         {
-            throw new MailConnectionException(MailFailureKind.Protocol, "メールサーバのプロトコルの異常。");
+            throw new MailConnectionException(MailFailureKind.Protocol, "A mail server protocol error occurred.");
         }
     }
 }
@@ -206,7 +206,7 @@ internal sealed class ImapMailSession : IMailSession
         }
         catch (Exception ex) when (ex is FolderNotFoundException or ImapCommandException or ImapProtocolException)
         {
-            throw new MailConnectionException(MailFailureKind.Protocol, "IMAP のフォルダを開けない。");
+            throw new MailConnectionException(MailFailureKind.Protocol, "Cannot open the IMAP folder.");
         }
     }
 

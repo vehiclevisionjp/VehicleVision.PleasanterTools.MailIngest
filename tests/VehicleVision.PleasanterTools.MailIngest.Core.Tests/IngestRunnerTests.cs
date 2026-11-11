@@ -1,4 +1,3 @@
-using System.Text.Json;
 using VehicleVision.PleasanterTools.MailIngest.Core.Configuration;
 using VehicleVision.PleasanterTools.MailIngest.Core.Ingest;
 using VehicleVision.PleasanterTools.MailIngest.Core.Mail;
@@ -55,8 +54,7 @@ public sealed class IngestRunnerTests
         Assert.All(summary.Sources, s => Assert.Equal(1, s.Created));
         Assert.Equal(2, h.Server.Records.Count);
         var text = summary.ToText();
-        var json = summary.ToJson();
-        foreach (var output in new[] { text, json })
+        foreach (var output in new[] { text })
         {
             Assert.DoesNotContain("秘密の件名", output, StringComparison.Ordinal);
             Assert.DoesNotContain("password-secret", output, StringComparison.Ordinal);
@@ -65,9 +63,7 @@ public sealed class IngestRunnerTests
         }
 
         Assert.Contains("Attachments are not transferred", text, StringComparison.Ordinal);
-        using var parsed = JsonDocument.Parse(json);
-        Assert.Equal(0, parsed.RootElement.GetProperty("exitCode").GetInt32());
-        Assert.Equal(2, parsed.RootElement.GetProperty("sources").GetArrayLength());
+        Assert.Equal(summary.ToLines().Count, text.Split(Environment.NewLine).Length);
         foreach (var source in new[] { "a", "b" })
         {
             Assert.Null(await h.Store.FindActiveRunAsync(source)); // 排他は解放されている

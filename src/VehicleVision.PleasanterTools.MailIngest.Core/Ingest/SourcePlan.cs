@@ -56,7 +56,7 @@ public sealed class SourcePlan
             errors.Add(new ConfigIssue(
                 path,
                 "AfterSuccessNotSupported",
-                "受信後操作は leave だけ実装している（markSeen・move・delete は後続）。"));
+                "Only leave is implemented for the after-success action (markSeen, move and delete come later)."));
         }
 
         TimeZoneInfo? zone = null;
@@ -66,7 +66,7 @@ public sealed class SourcePlan
         }
         catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
-            errors.Add(new ConfigIssue("pleasanter.timeZone", "UnknownTimeZone", "タイムゾーンを解決できない。"));
+            errors.Add(new ConfigIssue("pleasanter.timeZone", "UnknownTimeZone", "The time zone cannot be resolved."));
         }
 
         var target = source.Target;

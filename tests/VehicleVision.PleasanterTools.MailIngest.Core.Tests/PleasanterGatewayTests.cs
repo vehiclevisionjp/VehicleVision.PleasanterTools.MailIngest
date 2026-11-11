@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
+using VehicleVision.PleasanterTools.Core.Cli;
 using VehicleVision.PleasanterTools.DotNetClient;
 
 namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
@@ -447,20 +448,67 @@ public sealed class PleasanterGatewayTests
     }
 
     [Fact]
-    public void 環境変数から接続設定を作り_足りなければ_InvalidOperationException()
+    public void 環境変数から接続設定を作り_足りなければ_UsageException()
     {
         var options = PleasanterEnvironment.FromEnvironment(name => name switch
         {
-            "PLEASANTER_BASE_URL" => "https://example.invalid",
-            "PLEASANTER_API_KEY" => "k",
-            "PLEASANTER_SERVER_VERSION" => "not-a-version",
+            "VVPT_PLEASANTER_BASE_URL" => "https://example.invalid",
+            "VVPT_PLEASANTER_API_KEY" => "k",
+            "VVPT_PLEASANTER_SERVER_VERSION" => "not-a-version",
             _ => null,
         });
 
         Assert.Equal("https://example.invalid", options.BaseUrl);
+        Assert.Equal("k", options.ApiKey);
         Assert.False(options.DetectServerVersion);
         Assert.Null(options.ServerVersion);
-        Assert.Throws<InvalidOperationException>(() => PleasanterEnvironment.FromEnvironment(_ => null));
+        Assert.Throws<UsageException>(() => PleasanterEnvironment.FromEnvironment(_ => null));
+        Assert.Throws<UsageException>(() => PleasanterEnvironment.FromEnvironment(
+            name => name == "VVPT_PLEASANTER_BASE_URL" ? "https://example.invalid" : null));
+    }
+
+    [Fact]
+    public void API_キーはファイルからも読め_両方の指定は_UsageException()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "mailingest-key-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(path, "from-file\n");
+        try
+        {
+            var options = PleasanterEnvironment.FromEnvironment(name => name switch
+            {
+                "VVPT_PLEASANTER_BASE_URL" => "https://example.invalid",
+                "VVPT_PLEASANTER_API_KEY_FILE" => path,
+                _ => null,
+            });
+            Assert.Equal("from-file", options.ApiKey);
+
+            Assert.Throws<UsageException>(() => PleasanterEnvironment.FromEnvironment(name => name switch
+            {
+                "VVPT_PLEASANTER_BASE_URL" => "https://example.invalid",
+                "VVPT_PLEASANTER_API_KEY" => "k",
+                "VVPT_PLEASANTER_API_KEY_FILE" => path,
+                _ => null,
+            }));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void 旧名の環境変数だけでは未設定として扱う()
+    {
+        // 旧名（PLEASANTER_*）は読まず、検出も案内もしない。新名が未設定として失敗する
+        var ex = Assert.Throws<UsageException>(() => PleasanterEnvironment.FromEnvironment(name => name switch
+        {
+            "PLEASANTER_BASE_URL" => "https://example.invalid",
+            "PLEASANTER_API_KEY" => "k",
+            _ => null,
+        }));
+
+        Assert.Contains("VVPT_PLEASANTER_BASE_URL", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("no longer", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

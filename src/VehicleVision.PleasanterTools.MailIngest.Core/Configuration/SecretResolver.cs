@@ -31,7 +31,7 @@ public static class SecretResolver
 
         if (hasDirect && hasFile)
         {
-            throw new SecretResolutionException($"{name} と {name}_FILE が同時に指定されている。どちらか一方にする。");
+            throw new SecretResolutionException($"Both {name} and {name}_FILE are set. Set only one.");
         }
 
         if (hasDirect)
@@ -41,12 +41,12 @@ public static class SecretResolver
 
         if (!hasFile)
         {
-            throw new SecretResolutionException($"{name} も {name}_FILE も設定されていない。");
+            throw new SecretResolutionException($"Neither {name} nor {name}_FILE is set.");
         }
 
         if (!Path.IsPathFullyQualified(filePath!))
         {
-            throw new SecretResolutionException($"{name}_FILE は絶対パスで指定する。");
+            throw new SecretResolutionException($"{name}_FILE must be an absolute path.");
         }
 
         string text;
@@ -60,7 +60,7 @@ public static class SecretResolver
             {
                 if (buffer.Length + read > MaxFileBytes)
                 {
-                    throw new SecretResolutionException($"{name}_FILE のファイルが {MaxFileBytes} バイトを超えている。");
+                    throw new SecretResolutionException($"The file of {name}_FILE is larger than {MaxFileBytes} bytes.");
                 }
 
                 buffer.Write(chunk, 0, read);
@@ -76,7 +76,7 @@ public static class SecretResolver
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             // 例外のメッセージはパスを含むため、そのまま出さない
-            throw new SecretResolutionException($"{name}_FILE を UTF-8 のテキストとして読めない。");
+            throw new SecretResolutionException($"The file of {name}_FILE cannot be read as UTF-8 text.");
         }
 
         if (text.EndsWith("\r\n", StringComparison.Ordinal))
@@ -89,7 +89,7 @@ public static class SecretResolver
         }
 
         return text.Length == 0
-            ? throw new SecretResolutionException($"{name}_FILE の内容が空。")
+            ? throw new SecretResolutionException($"The file of {name}_FILE is empty.")
             : text;
     }
 }
