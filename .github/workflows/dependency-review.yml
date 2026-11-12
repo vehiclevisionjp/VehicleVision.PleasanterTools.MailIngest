@@ -21,7 +21,7 @@ jobs:
           fail-on-severity: moderate
           # コピーレフトを弾く。入ると商用ライセンスで提供できなくなる（LICENSING.md、規約 8）。
           # 許可の一覧ではなく拒否の一覧にしてあるのは、許可の一覧だと 0BSD や ISC のような無害なものまで落ちて、
-          # 赤いのが当たり前になるため。例外を通したいときは、ここから外す前に LICENSING.md で判断すること。
+          # 赤いのが当たり前になるため。例外を通したいときは、ここから外す前に LICENSING.md で判断すること（Core.* は 2026-11-11 に決定済み）。
           deny-licenses: >-
             GPL-1.0-only, GPL-1.0-or-later,
             GPL-2.0-only, GPL-2.0-or-later,
@@ -36,4 +36,15 @@ jobs:
             CDDL-1.0, CDDL-1.1,
             SSPL-1.0, BUSL-1.1,
             CC-BY-NC-4.0, CC-BY-NC-SA-4.0
+          # 自社の VehicleVision.PleasanterTools.Core.*（二重ライセンス: AGPL-3.0-or-later または商用）は、ライセンス検査の対象外にする。
+          # 他のコピーレフトは拒否のまま。Core にパッケージが増えたら、ここへ足す。決定: 2026-11-11
+          # purl は版なし・パッケージごと（ワイルドカードは使えない。種類と名前の完全一致）。
+          allow-dependencies-licenses: >-
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Mail,
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Data,
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Web,
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Web.Testing,
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Contracts,
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Cli,
+            pkg:nuget/VehicleVision.PleasanterTools.Core.Cli.Testing
           comment-summary-in-pr: always
