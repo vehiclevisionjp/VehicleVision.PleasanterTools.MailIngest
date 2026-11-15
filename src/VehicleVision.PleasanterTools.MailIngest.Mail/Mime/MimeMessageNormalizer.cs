@@ -226,7 +226,7 @@ public static class MimeMessageNormalizer
             switch (entity)
             {
                 case Multipart multipart:
-                    encrypted |= multipart is MultipartEncrypted;
+                    encrypted |= multipart is MultipartEncrypted || multipart.ContentType.IsMimeType("multipart", "encrypted");
                     foreach (var child in multipart.Reverse())
                     {
                         stack.Push((child, depth + 1));
@@ -241,7 +241,7 @@ public static class MimeMessageNormalizer
                     leaves.Add(new MimePart(entity.ContentType) { ContentDisposition = new ContentDisposition(ContentDisposition.Attachment) });
                     break;
                 case MimePart part:
-                    encrypted |= part is ApplicationPkcs7Mime { SecureMimeType: SecureMimeType.EnvelopedData };
+                    encrypted |= IsEnvelopedSmime(part.ContentType);
                     leaves.Add(part);
                     break;
                 default:
@@ -252,6 +252,11 @@ public static class MimeMessageNormalizer
         leaves.Reverse();
         return (MimeFailure.None, leaves, encrypted);
     }
+
+    /// <summary>S/MIME の暗号化本文（application/pkcs7-mime の enveloped-data）か。MimeKit 5 は暗号の型が別アセンブリのため、型ではなく Content-Type で判定する。</summary>
+    private static bool IsEnvelopedSmime(ContentType contentType) =>
+        (contentType.IsMimeType("application", "pkcs7-mime") || contentType.IsMimeType("application", "x-pkcs7-mime"))
+        && string.Equals(contentType.Parameters["smime-type"], "enveloped-data", StringComparison.OrdinalIgnoreCase);
 
     private static long HeaderSize(Header header) => (long)header.RawField.Length + header.RawValue.Length;
 
