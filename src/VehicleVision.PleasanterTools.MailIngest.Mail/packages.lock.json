@@ -62,15 +62,18 @@
       },
       "VehicleVision.PleasanterTools.DotNetClient": {
         "type": "Transitive",
-        "resolved": "0.4.0",
-        "contentHash": "1NC14fthCATUbNejOzGYQDXNiIN6kkwfPUTh/z4uCXAfnG289CE3hQWJEQZc29Texsn47w0h099ZTzQOT1EFVQ=="
+        "resolved": "0.5.0",
+        "contentHash": "w3QbsTR2ECoIXILhoO6vtsJLVyVbAb99Lhl0AcY8VCnHf+PpBEe5Oce2+npNIxPhUIgQULdiNg+yw9hvnjkHhg==",
+        "dependencies": {
+          "VehicleVision.PleasanterTools.Core.Contracts": "0.2.0"
+        }
       },
       "vehiclevision.pleasantertools.mailingest.core": {
         "type": "Project",
         "dependencies": {
           "VehicleVision.PleasanterTools.Core.Cli": "[0.2.0, )",
           "VehicleVision.PleasanterTools.Core.Contracts": "[0.2.0, )",
-          "VehicleVision.PleasanterTools.DotNetClient": "[0.4.0, )"
+          "VehicleVision.PleasanterTools.DotNetClient": "[0.5.0, )"
         }
       }
     }
