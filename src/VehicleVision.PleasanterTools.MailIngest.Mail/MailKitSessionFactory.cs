@@ -93,7 +93,7 @@ public sealed class MailKitSessionFactory(
         try
         {
             await ConnectAndAuthenticateAsync(client, source, options, authenticator, cancellationToken).ConfigureAwait(false);
-            if (!client.Capabilities.HasFlag(Pop3Capabilities.UIDL))
+            if (!client.Capabilities.Contains(Pop3Capability.UIDL))
             {
                 // UIDL が無いと、leave でも毎回すべてを再取得することになる。対応可否は未決のため、停止する
                 throw new MailConnectionException(MailFailureKind.Protocol, "The POP3 server does not support UIDL.");

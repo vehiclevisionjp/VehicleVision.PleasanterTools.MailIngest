@@ -89,8 +89,8 @@ public sealed class PasswordAuthenticator(MailCredentials credentials, IReadOnly
         ArgumentNullException.ThrowIfNull(client);
 
         var advertised = client.AuthenticationMechanisms.ToList();
-        var imapLoginDisabled = client is ImapClient imap && imap.Capabilities.HasFlag(ImapCapabilities.LoginDisabled);
-        var apop = client is Pop3Client pop3 && pop3.Capabilities.HasFlag(Pop3Capabilities.Apop);
+        var imapLoginDisabled = client is ImapClient imap && imap.Capabilities.Contains(ImapCapability.LoginDisabled);
+        var apop = client is Pop3Client pop3 && pop3.Capabilities.Contains(Pop3Capability.Apop);
 
         var plan = PasswordAuthenticationPlanner.Plan(protocol, allowedMechanisms, advertised, imapLoginDisabled, apop)
             ?? throw new MailConnectionException(
@@ -118,9 +118,11 @@ public sealed class PasswordAuthenticator(MailCredentials credentials, IReadOnly
                     client.AuthenticationMechanisms.Clear();
                     if (client is Pop3Client pop)
                     {
-                        pop.Capabilities = plan == PasswordMechanism.Apop
-                            ? pop.Capabilities | Pop3Capabilities.Apop
-                            : pop.Capabilities & ~Pop3Capabilities.Apop;
+                        // APOP を選んだときは、広告されている APOP をそのまま使う（計画が APOP を選ぶのは広告があるときだけ）
+                        if (plan != PasswordMechanism.Apop)
+                        {
+                            pop.Capabilities.Disable(Pop3Capability.Apop);
+                        }
                     }
 
                     await client.AuthenticateAsync(credentials.User, credentials.Password, cancellationToken).ConfigureAwait(false);
