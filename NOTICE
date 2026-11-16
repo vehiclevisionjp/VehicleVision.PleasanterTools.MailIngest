@@ -59,7 +59,7 @@ VehicleVision.PleasanterTools.DotNetClient 0.5.0 — LGPL-3.0-or-later OR AGPL-3
 https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient
 NuGet では PackageLicenseFile で LICENSING.md を表示する（SPDX の式は持たない）。推移的依存は無い（packages.lock.json）。
 本リポジトリ（AGPL ＋ 商用のデュアル）の A（AGPL）では DotNetClient も AGPL で、B（商用）では組み込まれた DotNetClient を商用ライセンスに含める。
-VehicleVision.PleasanterTools の各ツールが組み込む場合は、呼び出し元と一体として扱う（LICENSING.md の「例外: 当社の共通部品 DotNetClient」、Template #114・#117）。
+VehicleVision.PleasanterTools の各ツールが組み込む場合は、呼び出し元と一体として扱う（LICENSING.md の「例外: 当社の共通部品 DotNetClient」）。
 
 テスト用の直接依存（配布物には含めない）:
 VehicleVision.PleasanterTools.Core.Cli.Testing 0.2.0 — AGPL-3.0-or-later または商用（自社。CLI の共通仕様の契約テスト。Core リポジトリ）
