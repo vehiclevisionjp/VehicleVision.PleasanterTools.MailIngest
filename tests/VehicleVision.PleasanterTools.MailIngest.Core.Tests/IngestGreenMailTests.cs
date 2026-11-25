@@ -12,7 +12,7 @@ using VehicleVision.PleasanterTools.MailIngest.Mail;
 namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
 
 /// <summary>
-/// 環境変数があるときだけ動く、実際のメールサーバ（GreenMail の Docker）と偽の Pleasanter をつないだ取り込みの統合試験。
+/// 環境変数があるときだけ動く、実際のメールサーバ（GreenMail の Docker）と偽の Pleasanter をつないだインポートの統合試験。
 /// CI には外部のサーバも資格情報も与えない。環境変数は <see cref="GreenMailFetchTests"/> と同じ。
 /// </summary>
 [Collection("GreenMail")]

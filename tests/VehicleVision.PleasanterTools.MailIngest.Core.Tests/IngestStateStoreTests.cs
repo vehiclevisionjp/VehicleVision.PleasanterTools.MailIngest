@@ -3,7 +3,7 @@ using VehicleVision.PleasanterTools.MailIngest.Data;
 
 namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
 
-/// <summary>SQLite の一時 DB での、取り込み状態の試験。</summary>
+/// <summary>SQLite の一時 DB での、インポート状態の試験。</summary>
 public sealed class IngestStateStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "mailingest-tests-" + Guid.NewGuid().ToString("N"));

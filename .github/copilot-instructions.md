@@ -11,18 +11,19 @@
 4. 作業中の PR は Draft とし、タイトルに `WIP:` を付ける。Draft 解除はレビュー可能、WIP 除去はマージ可能の合図。
 5. CI をスキップするコミット指定を使わない。実装変更後は Release ビルドと影響するテストを実行する。
 6. 本ツールは AGPL と商用のデュアル。Pleasanter 本体は参照専用で、必要時に取得し Git では追跡しない。
-   コピー・流用・リンク・プロジェクト参照・配布は禁止。取り込むと商用側を提供できない。
+   コピー・流用・リンク・プロジェクト参照・配布は禁止。組み込むと商用側を提供できない。
 7. API キーとパスワードはコード・設定ファイル・ログ・公開ファイル・ブラウザへ出さない。環境変数か Git 管理外の設定から読む。未検証を動作済みとして説明しない。
 8. 本ツールはデュアルライセンス（AGPL-3.0-or-later ＋ 商用。[LICENSING.md](../LICENSING.md)）で提供する。依存 OSS は商用側も提供できる寛容ライセンス（MIT / BSD 系 / Apache-2.0）を基本とし、例外（共通 Core.Data は AGPL／商用）は採用前にレビューする。追加時にライセンスを一次情報で確認し、NOTICE とロックファイルを更新する。ただし、当社の共通部品（Core・DotNetClient）は、VehicleVision.PleasanterTools のツールが組み込む場合に呼び出し元と一体として扱うため例外とする（LICENSING.md の `core`・`dotnetclient`）。
 9. 作業前に [共通指示](../.github/copilot-instructions.md) の全文を読む。外部仕様は一次情報で確認し、出典と参照日を残す。
 10. README は利用者向けの取扱説明・製品説明の入口にする。ビルド・テスト・CI・エージェント運用など開発者向けの説明は [開発ガイド](../_documents/開発ガイド.md) と [開発運用](../_documents/開発運用.md) に分離する。
 11. `if` / `else` / `for` / `foreach` / `while` / `using` / `lock` などの本文の `{}` を省略しない（1 行で済む本文も同じ）。C# は `.editorconfig` とビルドで、TypeScript・Svelte は ESLint の `curly` で強制する。
+12. 用語は、一般に通じるカタカナ語を無理に漢字へ訳さない。「ボタン」を釦と書かず、「プレビュー」「スクリーンショット」「インポート」「エクスポート」を使う（下見・写し・取り込み・書き出しと書かない）。識別子（クラス名・設定名・ファイル名など）は変えない。
 <!-- AGENT-RULES:END -->
 
 ## プロジェクト
 
 POP3 / IMAP で受信したメールを Pleasanter のレコードへ対応づけて作成・更新するツール。
-C#／.NET 10 と標準 Web API を使う独立アプリ。現在はロジック層（設定検査・対応づけ・重複排除キー）まで実装済みで、取り込み実行は未実装。
+C#／.NET 10 と標準 Web API を使う独立アプリ。現在はロジック層（設定検査・対応づけ・重複排除キー）まで実装済みで、インポート実行は未実装。
 Pleasanter の API は NuGet の DotNetClient（`VehicleVision.PleasanterTools.DotNetClient`）で呼び、`src/*.Core` の `PleasanterGateway` がその組み方（リダイレクトを辿らない `HttpClient`・応答の検査）を持つ。`src/*.Cli` は接続確認と設定検査（`validate`）の CLI。
 現状と未決定事項は [アーキテクチャ方針](../_documents/アーキテクチャ方針.md) を確認する。
 

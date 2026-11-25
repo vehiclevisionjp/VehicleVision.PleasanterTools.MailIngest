@@ -35,7 +35,7 @@ public enum ImapSearchState
     Unseen,
 }
 
-/// <summary>取り込み成功後の操作。</summary>
+/// <summary>インポート成功後の操作。</summary>
 public enum AfterSuccessAction
 {
     Leave,
@@ -59,7 +59,7 @@ public sealed record PleasanterDestinationConfig(
     string TimeZone,
     decimal RequestsPerSecond);
 
-/// <summary>取り込み元（アカウント + 対象 + 送り先の 1 定義）。</summary>
+/// <summary>インポート元（アカウント + 対象 + 送り先の 1 定義）。</summary>
 public sealed record MailSourceConfig(
     string SourceId,
     MailProtocol Protocol,

@@ -9,7 +9,7 @@ public sealed class SourceRunSummary(string sourceId)
 
     public string SourceId { get; } = sourceId;
 
-    /// <summary>今回の取り込み候補にした通数（既処理を除く）。</summary>
+    /// <summary>今回のインポート候補にした通数（既処理を除く）。</summary>
     public int Listed { get; internal set; }
 
     /// <summary>候補が上限を超えて、さらに残っている。</summary>

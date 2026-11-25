@@ -1,6 +1,6 @@
 namespace VehicleVision.PleasanterTools.MailIngest.Core.State;
 
-/// <summary>取り込み項目（1 通のメール）の状態。</summary>
+/// <summary>インポート項目（1 通のメール）の状態。</summary>
 /// <remarks>遷移は <see cref="IngestStateTransitions"/>。設計 <c>取り込み状態とAPI.md</c> 第 4 節の状態遷移図に従う。</remarks>
 public enum IngestState
 {
@@ -57,7 +57,7 @@ public enum AckState
     Unknown,
 }
 
-/// <summary>取り込み項目。本文・RAW・パスワード・ApiKey・添付は持たない。</summary>
+/// <summary>インポート項目。本文・RAW・パスワード・ApiKey・添付は持たない。</summary>
 public sealed record IngestItem(
     Guid Id,
     string DestinationId,
@@ -76,7 +76,7 @@ public sealed record IngestItem(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
-/// <summary>新しい取り込み項目の確保要求。</summary>
+/// <summary>新しいインポート項目の確保要求。</summary>
 public sealed record NewIngestItem(
     string DestinationId,
     long SiteId,
@@ -112,7 +112,7 @@ public sealed record MailLocation(string Protocol, string LocationKey, string? F
 /// <summary>実行（ソース単位）。</summary>
 public sealed record SourceRun(Guid Id, string SourceId, string OwnerId, DateTimeOffset StartedAt);
 
-/// <summary>取り込み状態の保管。実装は <c>.Data</c>（Core.Data の DB）。</summary>
+/// <summary>インポート状態の保管。実装は <c>.Data</c>（Core.Data の DB）。</summary>
 public interface IIngestStateStore
 {
     Task<IngestItem?> FindAsync(

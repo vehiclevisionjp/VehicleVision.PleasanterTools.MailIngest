@@ -15,7 +15,7 @@ using VehicleVision.PleasanterTools.MailIngest.Mail.Mime;
 namespace VehicleVision.PleasanterTools.MailIngest.Cli;
 
 /// <summary>
-/// <c>run --config &lt;path&gt; [--json]</c>: 取り込みを 1 回実行する。業務ロジックは <c>.Core</c> の <see cref="IngestRunner"/> にあり、
+/// <c>run --config &lt;path&gt; [--json]</c>: インポートを 1 回実行する。業務ロジックは <c>.Core</c> の <see cref="IngestRunner"/> にあり、
 /// ここは設定・秘密・DB・接続の組み立てと、終了コード・サマリーの出力だけを行う。
 /// </summary>
 /// <remarks>

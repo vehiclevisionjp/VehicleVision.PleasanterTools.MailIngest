@@ -299,7 +299,7 @@ internal sealed class FakePleasanterHandler : HttpMessageHandler
     };
 }
 
-/// <summary>SQLite の一時 DB・偽のサーバ・実際の MIME 正規化で組み立てた、取り込みの試験環境。</summary>
+/// <summary>SQLite の一時 DB・偽のサーバ・実際の MIME 正規化で組み立てた、インポートの試験環境。</summary>
 internal sealed class IngestHarness : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "mailingest-ingest-" + Guid.NewGuid().ToString("N"));

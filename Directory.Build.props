@@ -1,7 +1,7 @@
 <Project>
   <!--
     ランタイム・言語は Pleasanter 本体に揃える（本体の global.json は SDK 10.0.100 / net10.0）。
-    Pleasanter 側は Nullable=disable だが、本ツールは新規実装で本体コードを取り込まないため enable とする。
+    Pleasanter 側は Nullable=disable だが、本ツールは新規実装で本体コードを組み込まないため enable とする。
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

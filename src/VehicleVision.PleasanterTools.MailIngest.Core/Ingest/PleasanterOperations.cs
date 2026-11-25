@@ -55,7 +55,7 @@ public sealed class PleasanterOperationsOptions
 }
 
 /// <summary>
-/// 取り込みが使う Pleasanter の操作（予約キーの検索・作成）。<see cref="PleasanterGateway"/> を包み、呼び出し回数と、
+/// インポートが使う Pleasanter の操作（予約キーの検索・作成）。<see cref="PleasanterGateway"/> を包み、呼び出し回数と、
 /// 接続先全体を止めるべき状況（認証拒否・429・日次枠の残量 0）を数える。
 /// </summary>
 /// <remarks>

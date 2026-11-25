@@ -4,12 +4,12 @@
 **主な想定はローカルで動かす Codex CLI などです。**
 
 GitHub 上のエージェントは `.github/copilot-instructions.md` を直接読みます。
-Claude Code はローカルで `CLAUDE.md` を読み、そこから同じ参照元を取り込みます。
+Claude Code はローカルで `CLAUDE.md` を読み、そこから同じ参照元を読み込みます。
 **このファイルが要るのは、AGENTS.md 標準が include の仕組みを規定しておらず、
 規約の本文が無いと届かないためです。**
 
 **規約の全文は [`.github/copilot-instructions.md`](.github/copilot-instructions.md) にあります。
-以下は同ファイルの「必ず守る規約」の写しです。作業前に参照元を必ず開いてください。**
+以下は同ファイルの「必ず守る規約」のコピーです。作業前に参照元を必ず開いてください。**
 
 <!-- この節は .github/copilot-instructions.md から生成される。ここを直接編集しないこと。
      編集は .github/copilot-instructions.md 側で行い、`scripts/sync-agents.sh` を実行する。 -->
@@ -22,9 +22,10 @@ Claude Code はローカルで `CLAUDE.md` を読み、そこから同じ参照�
 4. 作業中の PR は Draft とし、タイトルに `WIP:` を付ける。Draft 解除はレビュー可能、WIP 除去はマージ可能の合図。
 5. CI をスキップするコミット指定を使わない。実装変更後は Release ビルドと影響するテストを実行する。
 6. 本ツールは AGPL と商用のデュアル。Pleasanter 本体は参照専用で、必要時に取得し Git では追跡しない。
-   コピー・流用・リンク・プロジェクト参照・配布は禁止。取り込むと商用側を提供できない。
+   コピー・流用・リンク・プロジェクト参照・配布は禁止。組み込むと商用側を提供できない。
 7. API キーとパスワードはコード・設定ファイル・ログ・公開ファイル・ブラウザへ出さない。環境変数か Git 管理外の設定から読む。未検証を動作済みとして説明しない。
 8. 本ツールはデュアルライセンス（AGPL-3.0-or-later ＋ 商用。[LICENSING.md](LICENSING.md)）で提供する。依存 OSS は商用側も提供できる寛容ライセンス（MIT / BSD 系 / Apache-2.0）を基本とし、例外（共通 Core.Data は AGPL／商用）は採用前にレビューする。追加時にライセンスを一次情報で確認し、NOTICE とロックファイルを更新する。ただし、当社の共通部品（Core・DotNetClient）は、VehicleVision.PleasanterTools のツールが組み込む場合に呼び出し元と一体として扱うため例外とする（LICENSING.md の `core`・`dotnetclient`）。
 9. 作業前に [共通指示](.github/copilot-instructions.md) の全文を読む。外部仕様は一次情報で確認し、出典と参照日を残す。
 10. README は利用者向けの取扱説明・製品説明の入口にする。ビルド・テスト・CI・エージェント運用など開発者向けの説明は [開発ガイド](_documents/開発ガイド.md) と [開発運用](_documents/開発運用.md) に分離する。
 11. `if` / `else` / `for` / `foreach` / `while` / `using` / `lock` などの本文の `{}` を省略しない（1 行で済む本文も同じ）。C# は `.editorconfig` とビルドで、TypeScript・Svelte は ESLint の `curly` で強制する。
+12. 用語は、一般に通じるカタカナ語を無理に漢字へ訳さない。「ボタン」を釦と書かず、「プレビュー」「スクリーンショット」「インポート」「エクスポート」を使う（下見・写し・取り込み・書き出しと書かない）。識別子（クラス名・設定名・ファイル名など）は変えない。
