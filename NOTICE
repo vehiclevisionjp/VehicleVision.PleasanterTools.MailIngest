@@ -37,7 +37,7 @@ https://github.com/Implem/Implem.Pleasanter
       上の条件は、LICENSING.md（例外の節）と LICENSE-COMMERCIAL.md（頒布先に守っていただく条件）へ反映した）
   Npgsql 10.0.3 / PostgreSQL License（BSD 系の寛容ライセンス） / https://www.nuget.org/packages/Npgsql
   MySqlConnector 2.6.2 / MIT / https://www.nuget.org/packages/MySqlConnector
-  System.Security.Cryptography.Pkcs 10.0.14 / MIT / https://www.nuget.org/packages/System.Security.Cryptography.Pkcs
+  System.Security.Cryptography.Pkcs 10.0.15 / MIT / https://www.nuget.org/packages/System.Security.Cryptography.Pkcs
   MimeKit 5.0.0 / MIT / https://github.com/jstedfast/MimeKit
     （受信メールの MIME 解析。一次情報: nuget.org の nuspec が license expression MIT、参照日 2026-11-02。5.0.0 で MimeKit.Core・MimeKit.Cryptography に分かれた。推移的で、どちらも nuspec が MIT、参照日 2026-11-16）
   MailKit 5.0.0 / MIT / https://github.com/jstedfast/MailKit
