@@ -479,7 +479,7 @@
         "dependencies": {
           "MailKit": "[5.0.0, )",
           "MimeKit": "[5.0.0, )",
-          "System.Security.Cryptography.Pkcs": "[10.0.14, )",
+          "System.Security.Cryptography.Pkcs": "[10.0.15, )",
           "VehicleVision.PleasanterTools.MailIngest.Core": "[0.1.0, )"
         }
       }

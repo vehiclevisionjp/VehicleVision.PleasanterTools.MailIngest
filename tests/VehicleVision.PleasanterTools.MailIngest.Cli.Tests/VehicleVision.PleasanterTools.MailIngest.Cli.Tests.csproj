@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="10.1.0" />
+    <PackageReference Include="coverlet.collector" Version="10.1.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <!-- CLI の共通仕様の契約テスト（出力・終了コード・JSON の枠・秘密）。配布物には含めない -->
     <PackageReference Include="VehicleVision.PleasanterTools.Core.Cli.Testing" Version="0.3.0" />
