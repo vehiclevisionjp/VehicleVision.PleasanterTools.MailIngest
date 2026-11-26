@@ -11,7 +11,7 @@ namespace VehicleVision.PleasanterTools.MailIngest.Core.Ingest;
 internal sealed class IngestCommitException(string message) : Exception(message);
 
 /// <summary>
-/// 1 ソースの取り込み（取得 → 正規化 → 重複排除・状態確保 → 対応づけ → 既存キー照合 → 作成 → DB 確定）。
+/// 1 ソースのインポート（取得 → 正規化 → 重複排除・状態確保 → 対応づけ → 既存キー照合 → 作成 → DB 確定）。
 /// 設計 <c>取り込み状態とAPI.md</c> 第 4 節の状態遷移に従う。
 /// </summary>
 /// <remarks>
@@ -34,7 +34,7 @@ public sealed class SourceIngestRunner(
     private readonly IIngestLog _log = log ?? NullIngestLog.Instance;
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
-    /// <summary>接続・認証済みのセッションから、1 回分（件数上限まで）を取り込む。</summary>
+    /// <summary>接続・認証済みのセッションから、1 回分（件数上限まで）をインポートする。</summary>
     public async Task<SourceRunSummary> RunAsync(
         SourcePlan plan,
         IMailSession session,
@@ -308,7 +308,7 @@ public sealed class SourceIngestRunner(
         var destinationId = plan.Destination.DestinationId;
         var target = source.Target;
 
-        // 取得（サーバ上のメールは変えない）。上限を超えたら取り込まず、保留として残す
+        // 取得（サーバ上のメールは変えない）。上限を超えたらインポートせず、保留として残す
         var raw = await session.OpenRawAsync(candidate, source.Limits.RawBytes, cancellationToken).ConfigureAwait(false);
         if (raw.Stream is null)
         {

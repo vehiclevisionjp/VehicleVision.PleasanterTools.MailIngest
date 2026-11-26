@@ -5,7 +5,7 @@ using VehicleVision.PleasanterTools.MailIngest.Core.State;
 
 namespace VehicleVision.PleasanterTools.MailIngest.Core.Tests;
 
-/// <summary>取り込みパイプライン（取得 → 正規化 → 重複排除 → 対応づけ → 既存キー照合 → 作成 → DB 確定）の試験。</summary>
+/// <summary>インポートパイプライン（取得 → 正規化 → 重複排除 → 対応づけ → 既存キー照合 → 作成 → DB 確定）の試験。</summary>
 public sealed class IngestPipelineTests
 {
     private static string Loc(int uid) => $"imap:1:{uid}:INBOX";

@@ -119,7 +119,7 @@ public sealed record StartupCheck(IReadOnlyList<SourcePlan> Plans, IReadOnlyList
 }
 
 /// <summary>
-/// 取り込み実行（全ソースを順に）。ソースごとに実行の排他を取り、接続し、<see cref="SourceIngestRunner"/> で取り込む。
+/// インポート実行（全ソースを順に）。ソースごとに実行の排他を取り、接続し、<see cref="SourceIngestRunner"/> でインポートする。
 /// </summary>
 /// <remarks>
 /// <para>同じソースの実行が終わっていなければそのソースは実行しない（期限切れで引き継がない。異常終了で残ったものは人が確認して解除する。#85）。</para>

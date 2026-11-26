@@ -2,7 +2,7 @@ using FluentMigrator;
 
 namespace VehicleVision.PleasanterTools.MailIngest.Data.Migrations;
 
-/// <summary>取り込み項目・メールの位置・ソースの実行（設計 取り込み状態とAPI.md 第 3 節）。</summary>
+/// <summary>インポート項目・メールの位置・ソースの実行（設計 取り込み状態とAPI.md 第 3 節）。</summary>
 /// <remarks>
 /// <para>**4 種の RDBMS で通じる型だけを使う。** ID は文字列（GUID の "D" 形式）、状態は文字列、日時はネイティブ日時型。</para>
 /// <para>本文・RAW・パスワード・ApiKey・添付バイナリは保存しない。</para>

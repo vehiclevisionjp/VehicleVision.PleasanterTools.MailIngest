@@ -9,7 +9,7 @@ public sealed record MailAddressList(IReadOnlyList<string> Addresses, IReadOnlyL
 }
 
 /// <summary>
-/// MIME の解析後に得られる、取り込みの入力となる正規化メール。
+/// MIME の解析後に得られる、インポートの入力となる正規化メール。
 /// </summary>
 /// <remarks>
 /// <para>ここは MIME 解析や文字コード変換をしない（それらは受信実装の責務）。

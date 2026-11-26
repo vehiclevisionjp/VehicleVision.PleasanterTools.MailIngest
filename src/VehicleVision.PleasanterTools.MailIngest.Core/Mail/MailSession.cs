@@ -38,7 +38,7 @@ public sealed class MailCredentials(string user, string password)
     public override string ToString() => nameof(MailCredentials);
 }
 
-/// <summary>取り込み候補（1 通のメール）。サーバ申告のサイズは信用しない。</summary>
+/// <summary>インポート候補（1 通のメール）。サーバ申告のサイズは信用しない。</summary>
 public abstract record MailCandidate(MailLocation Location, long? DeclaredSize);
 
 /// <summary>RAW の取得結果。</summary>
@@ -60,7 +60,7 @@ public interface IMailSession : IAsyncDisposable
     /// </summary>
     Task<MailListing> ListAsync(int maxCandidates, Func<string, bool> isKnown, CancellationToken cancellationToken = default);
 
-    /// <summary>RAW を取得する。<paramref name="maxBytes"/> を超えるものは取り込まない（上限 + 1 バイトまでしか読まない）。</summary>
+    /// <summary>RAW を取得する。<paramref name="maxBytes"/> を超えるものはインポートしない（上限 + 1 バイトまでしか読まない）。</summary>
     Task<MailRaw> OpenRawAsync(MailCandidate candidate, long maxBytes, CancellationToken cancellationToken = default);
 }
 
