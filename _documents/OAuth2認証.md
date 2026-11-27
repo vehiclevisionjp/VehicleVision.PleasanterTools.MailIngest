@@ -4,8 +4,8 @@
 
 ## 1. 状態・目的・範囲
 
-**レビュー用の設計文書（2026-11-06、Issue #90。親は #65、その親は #60）。実装（コード）はまだ書かない。**
-本文の「推奨」は、第 11 節の質問に答えるまでは承認待ちの案であり、確定仕様ではない。
+**設計文書（2026-11-06 に起案、2026-11-27 に第 11 節の 9 件の質問への決定を反映）。実装（コード）はまだ書かない。**
+第 11 節の決定はユーザーの決定で、本文はその決定に沿う。Q5 だけは、起案時の推奨と違う決定（`OAUTHBEARER` も許可値に足す）になった。
 **実機では何も確かめていない。** 外部仕様は第 2 節の一次情報の記述にとどまり、
 MailKit 以外は、接続して動かしたものはない。確認できなかった点は「未確認」と書く。
 
@@ -14,23 +14,38 @@ MailKit 以外は、接続して動かしたものはない。確認できなか
 [アーキテクチャ方針](アーキテクチャ方針.md) の第 3 節のとおり、Microsoft 365 は Basic 認証が無効化されており
 （第 2 節）、パスワード認証だけでは主な利用環境を扱えない。
 
-### 決定済みの事項（ユーザー決定、2026-11-06。#65 のコメント）
+### 先に決まっていた事項（ユーザー決定、2026-11-06）
 
 | 質問 | 決定 |
 | --- | --- |
 | 8-1 トークンの保存 | 更新トークンは状態 DB（SQLite。Core.Data）に**暗号化して保存**し、ツールが自動で更新する。最初の認可は、運用者が専用のコマンドで 1 回だけ行う。暗号化の鍵は、既存の秘密の渡し方（環境変数または `_FILE`）で別に渡す。Microsoft の更新トークンは更新のたびに新しい値が返ることがあるため、書き戻しを前提にする |
 | 8-2 対象 | Microsoft 365 と Gmail を同時に作る。PR は、共通の部分・Microsoft 365・Gmail に分けてよい |
-| 8-3 設定の形 | `authentication.mode` に `oauth2` を足し、`allowedMechanisms` は `password` と同じ形で `XOAUTH2` を明示する。`provider` は `microsoft365`・`gmail`。既存の原則（設定に書いた方式だけを使う・フォールバックしない・1 つの source は 1 つの認証方式）を変えない |
+| 8-3 設定の形 | `authentication.mode` に `oauth2` を足し、`allowedMechanisms` は `password` と同じ形で `XOAUTH2` を明示する。`provider` は `microsoft365`・`gmail`。既存の原則（設定に書いた方式だけを使う・フォールバックしない・1 つの source は 1 つの認証方式）を変えない。**2026-11-27 の Q5 の決定で、許可値に `OAUTHBEARER` を足す拡張をした**（拡張した箇所は下の「8-3 からの拡張」） |
 
-この文書は、決定の**細部**（項目名・表・コマンド・失敗時の挙動）を示し、決めきれない点を第 11 節で聞く。
+この文書は、決定の**細部**（項目名・表・コマンド・失敗時の挙動）を示す。2026-11-27 に、第 11 節の質問 Q1〜Q9 へ回答があり、決定として反映した。
+
+### 8-3 からの拡張（Q5、2026-11-27）
+
+8-3 は `allowedMechanisms` を `["XOAUTH2"]` に限っていた。これを次のとおり広げた。
+それ以外（`mode`・`provider`・明示が必須・フォールバックなし・1 つの source は 1 つの認証方式）は 8-3 のまま。
+
+| 項目 | 8-3（変更前） | 拡張後 |
+| --- | --- | --- |
+| 許可値 | `XOAUTH2` のみ | `XOAUTH2` または `OAUTHBEARER` |
+| 書き方 | `["XOAUTH2"]` | `["XOAUTH2"]` か `["OAUTHBEARER"]` の**どちらか 1 つ**。両方を並べる（混在）はエラー |
+| 省略 | 不可 | 不可（変更なし。既定を補わない） |
+
+拡張の理由: MailKit の Gmail 向けの文書は `OAUTHBEARER` を使う（2.3）。一方、Google の IMAP の文書は XOAUTH2 だけを記述し（2.2）、
+サーバーがどちらを広告するかは実機で確かめていない。
+運用者が、サーバーの広告に合わせて選べるようにする。**ツールが XOAUTH2 から OAUTHBEARER へ自動で切り替えること（フォールバック）はしない。**
 
 ### 範囲
 
 | 区分 | 内容 |
 | --- | --- |
-| 範囲内 | 委任（ユーザーとしての）認可コードフロー、更新トークンの暗号化保存と自動更新、認可・状態確認のコマンド、起動前検査、許可リストとの整合 |
-| 後続（Q 次第） | Microsoft 365 のアプリ専用（クライアント資格情報）、Microsoft のデバイスコードフロー、鍵の交換コマンド、管理者への通知 |
-| 対象外（初版） | Gmail のサービスアカウント（ドメイン全体の委任）、個人の Microsoft アカウント（outlook.com）、SMTP 送信、IMAP / POP3 以外 |
+| 範囲内 | 委任（ユーザーとしての）認可コードフロー（`--port` と `--paste`）、更新トークンの暗号化保存と自動更新、認可・状態確認のコマンド、起動前検査、許可リストとの整合、XOAUTH2 と OAUTHBEARER |
+| 後続（別の Issue） | Microsoft 365 のアプリ専用（クライアント資格情報。`oauth2.grant` に拡張点を残す）、鍵の交換コマンド（`oauth2-rekey`）、複数の鍵 |
+| 対象外（初版） | **Gmail のサービスアカウント（ドメイン全体の委任。Q6）**、Microsoft のデバイスコードフロー（Q1。Gmail が使えず方式を 2 本にしない）、ツール自身による管理者への通知（Q8）、共通のクライアント ID の配布（Q9）、個人の Microsoft アカウント（outlook.com）、SMTP 送信、IMAP / POP3 以外 |
 
 ## 2. 一次情報の確認（参照日 2026-11-06）
 
@@ -98,13 +113,37 @@ Microsoft Learn と GitHub の MailKit 文書は原文（メタ情報付き）�
 
 - 採用版 4.18.1（MIT）の XML ドキュメントで、`MailKit.Security.SaslMechanismOAuth2`（XOAUTH2。Google 用に作られた方式という説明）と
   `SaslMechanismOAuthBearer`（OAUTHBEARER）の両方を確認した。どちらも `(ユーザー名, アクセストークン)` のコンストラクターがある。
-  NuGet のキャッシュにある `lib/net10.0/MailKit.xml`（参照日 2026-11-06）。
+  NuGet のキャッシュにある `lib/net10.0/MailKit.xml`（参照日 2026-11-06、2026-11-27 に OAuthBearer の項を再確認）。
 - 認証は、`client.AuthenticateAsync(SaslMechanism)` に、方式を**直接渡す**。方式を渡すので、MailKit の自動選択（SASL → APOP → USER/PASS）を通らない。
   これは、「許可した方式 1 つだけ・フォールバックなし」の原則に合う。
 - [MailKit の Exchange の OAuth2 の文書][mailkit-exchange]（GitHub master、参照日 2026-11-06）は `SaslMechanismOAuth2` を使い、
-  [GMail の文書][mailkit-gmail] は `SaslMechanismOAuthBearer` を使う。**Gmail が OAUTHBEARER を広告し、XOAUTH2 も広告するかは、実機で確かめていない（未確認）**。
-  決定 8-3 は `XOAUTH2` なので、本文は XOAUTH2 を前提にし、Gmail で食い違った場合の扱いを Q5 で聞く。
-- MailKit の文書は、トークンの取得に MSAL（Microsoft）と Google.Apis.Auth（Google）を使う。本ツールが同じものを使うかは Q2。
+  [GMail の文書][mailkit-gmail]（参照日 2026-11-27 に再確認）
+  は `SaslMechanismOAuthBearer` を使う（コード例の `new SaslMechanismOAuthBearer (credential.UserId, credential.Token.AccessToken)`）。
+  この文書は XOAUTH2 と OAUTHBEARER の比較を述べていない。**Gmail のサーバーが OAUTHBEARER・XOAUTH2 のどちらを広告するかは、実機で確かめていない（未確認）**。
+- 決定 8-3 の XOAUTH2 に、Q5 の決定で OAUTHBEARER を足した（第 1 節）。MailKit は、方式ごとのクラスを選んで渡せば足りる（第 9 節）。
+- MailKit の文書は、トークンの取得に MSAL（Microsoft）と Google.Apis.Auth（Google）を使う。本ツールは使わず、標準の `HttpClient` による薄い自前の実装にする（Q2）。
+
+### 2.3.1 OAUTHBEARER の一次情報（参照日 2026-11-27）
+
+取得は、本文を要約して返す取得ツールを経由した（原文そのものではない）。RFC の細部（文字列の形）は、実装時に原文で再確認する。
+
+| 項目 | 確認した内容 | 出典 |
+| --- | --- | --- |
+| 方式名 | `OAUTHBEARER`（SASL 方式の登録簿に登録。OAuth 1.0a の MAC トークン用の `OAUTH10A` も同じ RFC が定めるが、使わない） | [RFC 7628][rfc7628] |
+| 初期クライアント応答の形（3.1 節） | GS2 形式のヘッダー（`n,` に、省略可能な `a=<ユーザー>,`）に続き、`^A`（0x01）で終わるキーと値の組が 0 個以上、最後に `^A`。**`auth` が必須**で、HTTP の Authorization ヘッダーの値（`Bearer <トークン>`）を入れる。`host`・`port` は省略可能（鍵つきメッセージダイジェストを使うトークンだけで必須。同 RFC の例には含まれる）。サーバーは未知のキーを無視する。IMAP の例は、復号した形で `n,a=user@example.com,^Ahost=server.example.com^Aport=143^Aauth=Bearer <トークン>^A^A` | 同上 |
+| TLS | OAUTHBEARER ではベアラートークンを守るため、TLS を**必ず**使う（MUST） | 同上 |
+| 失敗の流れ（3.2.2・3.2.3・4.3 節） | クライアントの応答が無効だと、サーバーは JSON のエラー（`status` が必須。`scope`・`openid-configuration` は任意）を返す。クライアントは**単独の `^A`（base64 で `AQ==`）**をダミーの応答として返し、サーバーが失敗にする。IMAP は `*` による中止でもよい | 同上 |
+| プロトコルごとの記述 | 例は IMAP と SMTP のみ。**POP3 の記述は無い**。IMAP は、CAPABILITY に `AUTH=OAUTHBEARER` を広告する。SMTP の例（4.4 節）が `n,user=` となっていて、GS2 の形（`n,a=`）と食い違って見えるため、**この点は未確認**（実装では IMAP の形を基準にする） | 同上 |
+| MailKit の実装の形 | `SaslMechanismOAuthBearer` の初期応答は、`n,a=<ユーザー>,` ^A `host=<ホスト>` ^A `port=<ポート>` ^A `auth=Bearer <トークン>` ^A^A。サーバーが失敗のチャレンジを返したときは、単独の `^A`（1 バイト）を返す。**応答の組み立てのために接続先の URI が要る（無いと例外）。MailKit が接続の情報から設定するかは未確認**（実装時に、偽のサーバーで形を確かめる） | [MailKit のソース][mailkit-bearer-src]（master） |
+| Microsoft の文書 | IMAP・POP の認証を **SASL XOAUTH2 の形式**と説明し、`AUTHENTICATE XOAUTH2`・`AUTH XOAUTH2` の例だけを示す。**OAUTHBEARER の記述は無い**。Exchange Online が OAUTHBEARER を受け付けるかは**未確認** | [IMAP・POP・SMTP を OAuth で認証する][ms-imap-oauth]（参照日 2026-11-27） |
+| Google の文書 | XOAUTH2 だけを記述し、**OAUTHBEARER の記述は無い**。IMAP の例の応答は `AUTH=XOAUTH2 AUTH=XOAUTH`、または `AUTH=XOAUTH2`。SMTP の例は `AUTH LOGIN PLAIN XOAUTH XOAUTH2`。**例であり、広告する方式の一覧ではない**。POP の広告の例は無い。Gmail が OAUTHBEARER を受け付けるか、広告するかは**未確認** | [Gmail の XOAUTH2 プロトコル][g-xoauth2]（参照日 2026-11-27） |
+
+**要約**: Microsoft 365 は文書の上では XOAUTH2 だけが確認できる。Gmail は、Google の文書が XOAUTH2、MailKit の文書が OAUTHBEARER で、
+どちらが実際に使えるかは実機の確認が要る。
+プロバイダーごとの既定の方式は第 4.1 節（Microsoft は XOAUTH2、Gmail も一次情報の記述がある XOAUTH2。OAUTHBEARER は、サーバーが広告するときの運用者の選択）。
+
+[rfc7628]: https://www.rfc-editor.org/rfc/rfc7628.html
+[mailkit-bearer-src]: https://github.com/jstedfast/MailKit/blob/master/MailKit/Security/SaslMechanismOAuthBearer.cs
 
 [mailkit-exchange]: https://github.com/jstedfast/MailKit/blob/master/ExchangeOAuth2.md
 [mailkit-gmail]: https://github.com/jstedfast/MailKit/blob/master/GMailOAuth2.md
@@ -114,11 +153,11 @@ Microsoft Learn と GitHub の MailKit 文書は原文（メタ情報付き）�
 - **更新トークンは、ある日突然失効する**: パスワード変更（Microsoft の公開クライアントの一部、Gmail のスコープ）、管理者の取り消し、
   長期間の未使用（Microsoft の既定 90 日、Google は 6 か月）、Google の Testing（7 日）。
   再認可の手順（第 4 節）と、失効を運用者に気づかせる手段（第 8 節）が要る。
-- **Microsoft 365 は、アプリ専用のほうが無人運用に向く可能性がある**: 更新トークンもパスワード変更の影響も無いが、確認できなかった点（上の表）がある。Q4。
+- **Microsoft 365 は、アプリ専用のほうが無人運用に向く可能性がある**: 更新トークンもパスワード変更の影響も無いが、確認できなかった点（上の表）がある。初版は委任だけで、アプリ専用は後続（Q4）。
 - **Gmail の `https://mail.google.com/` は狭められない**（IMAP の通常の利用では唯一のスコープ）。権限の最小化は、Microsoft（メールボックスごとの許可）ほど効かない。
 - 個人の Gmail で使うなら、In production・未審査・警告つきの運用になる。Workspace なら、Internal にすれば審査が免除される（2.2 の免除の記述）。
 
-## 3. 認可の方式（推奨を 1 つ）
+## 3. 認可の方式（決定）
 
 ### 3.1 比較
 
@@ -130,7 +169,7 @@ Microsoft Learn と GitHub の MailKit 文書は原文（メタ情報付き）�
 | 安全性 | PKCE と `state` で、コードの横取りと CSRF を防ぐ | ユーザーコードを他人に入力させる誘導（フィッシング）の余地。PKCE の代わりは無い |
 | 実装の量 | リスナーと PKCE・`state` が要る | ポーリングだけ |
 
-### 3.2 推奨
+### 3.2 決定（Q1）
 
 **認可コードフロー（PKCE の `S256`・`state`・ループバックのリダイレクト）を、両プロバイダー共通の唯一の方式にする。**
 
@@ -141,7 +180,8 @@ Microsoft Learn と GitHub の MailKit 文書は原文（メタ情報付き）�
 3. 画面の無いサーバーの問題は、運用者の端末側で補える（第 4 節の `--port` と SSH のポート転送、または `--paste`）。サーバーにブラウザは要らない。
 4. 認可は、運用者が 1 回だけ行う作業（決定 8-1）。使いやすさの代償は、最初の 1 回の手順の手間だけ。
 
-Microsoft のデバイスコードは、Microsoft 365 だけの補助として後続にできる。初版に入れるかは Q1 で聞く。
+`--port`（SSH のポート転送）と `--paste` の両方を、初版で用意する。**Microsoft のデバイスコードは初版に入れない**（Microsoft 365 だけの補助として後続にできるが、
+Gmail と手順が分かれるため、今は見送る）。
 
 ### 3.3 クライアントの種類
 
@@ -150,8 +190,8 @@ Microsoft のデバイスコードは、Microsoft 365 だけの補助として�
 | Microsoft 365 | アプリの登録で「モバイルとデスクトップ アプリケーション」に `http://localhost` を登録し、**公開クライアントフローを許可**する（公開クライアント） | **持たない**（公開クライアントはコードの引き換えにシークレットを使わない。2.1） |
 | Gmail | 「デスクトップ アプリ」の OAuth クライアント | トークン交換・更新で**任意**（2.2）。要るかどうかは実機で確認。設定には**任意**の項目として置く |
 
-アプリの登録・OAuth クライアントは、**運用者が自分のテナント・プロジェクトで作る**ことを推奨する（本ツールの配布者が共通のクライアント ID を配らない）。
-Google の制限付きスコープの審査（2.2）を、配布者が背負わないため。Q9。
+アプリの登録・OAuth クライアントは、**運用者が自分のテナント・プロジェクトで作る**（決定 Q9）。配布者は、登録の手順を文書で示すだけで、共通のクライアント ID を配らない。
+Google の制限付きスコープの審査（2.2）を、配布者が背負わないため。手順書は、実装の PR（第 12 節の 2・3）で、各プロバイダーの設定例・README に足す。
 
 ## 4. 設定 JSON の形
 
@@ -164,13 +204,24 @@ Google の制限付きスコープの審査（2.2）を、配布者が背負わ�
 | --- | --- | --- |
 | `mode` | 必須 | `oauth2` |
 | `provider` | 必須 | `microsoft365` または `gmail`。未知値は起動エラー |
-| `allowedMechanisms` | 必須 | `["XOAUTH2"]` のみ。**省略不可**（`password` のように既定を補わない）。他の値・重複・空は起動エラー |
+| `allowedMechanisms` | 必須 | `["XOAUTH2"]` または `["OAUTHBEARER"]` の**どちらか 1 つだけ**（Q5。8-3 の拡張）。**省略不可**（`password` のように既定を補わない）。両方の併記（混在）・他の値・重複・空は起動エラー。値の大文字小文字は区別する |
 | `userEnvironmentVariable` | 必須 | メールボックスのアドレスの環境変数名。`password` と同じ規則（`NAME` / `NAME_FILE`）。XOAUTH2 の `user=` に使う |
 | `oauth2.grant` | 必須 | `authorizationCode`（初版の唯一の値。後続の `clientCredentials` などの拡張点） |
 | `oauth2.clientId` | 必須 | アプリの登録のクライアント ID。秘密ではない（設定 JSON に書いてよい） |
 | `oauth2.tenant` | `microsoft365` で必須、`gmail` で禁止 | テナント ID（GUID）またはドメイン名。`common`・`organizations`・`consumers` は不可（対象を 1 つのテナントに固定する）。URL の組み立てに使うため、形式を検査する（英数字・`-`・`.` だけ） |
 | `oauth2.clientSecretEnvironmentVariable` | `microsoft365` で禁止、`gmail` で任意 | クライアントシークレットの環境変数名（`NAME` / `NAME_FILE`）。値は JSON に置かない |
 | `oauth2.tokenKeyEnvironmentVariable` | 必須 | 更新トークンの暗号化の鍵の環境変数名（`NAME` / `NAME_FILE`）。Base64 の 32 バイト。複数の source で同じ名前を共有してよい |
+
+**方式の選び方（`allowedMechanisms`）**: 既定は補わないので、運用者が書く。次を推奨とし、設定例にも載せる。
+
+| `provider` | 推奨 | 理由 |
+| --- | --- | --- |
+| `microsoft365` | `["XOAUTH2"]` | Microsoft の文書が、IMAP・POP を XOAUTH2 の形式で説明している（2.3.1）。OAUTHBEARER の記述は無い（未確認） |
+| `gmail` | `["XOAUTH2"]`。サーバーが XOAUTH2 を広告しなければ `["OAUTHBEARER"]` | Google の IMAP の文書が XOAUTH2 を記述している（2.3.1）。MailKit の文書は OAUTHBEARER を使う。実機で広告を確かめるまで、どちらかは決められない |
+
+推奨と違う組み合わせは、エラーにしない（サーバーが広告しない方式は、第 9 節の計画で認証を送らずに止まる）。
+ただし `microsoft365` に `OAUTHBEARER` を書いたときは、**一次情報で確認できていない旨の警告**（`MechanismUnconfirmedForProvider`）
+を `validate` と `run` の起動時に出す。
 
 **スコープは設定に書かせない。** プロバイダーとプロトコルから、コードが固定で決める（最小権限と設定ミスの防止）。
 
@@ -235,6 +286,9 @@ Google のトークンのエンドポイントは `https://oauth2.googleapis.com
 }
 ```
 
+Gmail で OAUTHBEARER を使うときは、`"allowedMechanisms": ["OAUTHBEARER"]` に置き換える（他の項目は同じ）。
+`["XOAUTH2", "OAUTHBEARER"]` のような併記は起動エラー。
+
 `host`・ポートは説明用。`outlook.office365.com` は、今回の一次情報では確認していない（2.1）。
 プロバイダーと `host` が食い違う設定は、**警告**にとどめる（エラーにしない。社内の中継などを禁じない）。
 
@@ -274,7 +328,8 @@ Google のトークンのエンドポイントは `https://oauth2.googleapis.com
 6. 運用者がブラウザで同意する。待ち受けは、**最初の正しい 1 回の要求だけ**を受ける（後述）。
 7. 認可コードを、PKCE の `code_verifier` つきで、トークンのエンドポイントへ送る（Microsoft は公開クライアントでシークレットなし。Gmail は設定されていればシークレット）。
 8. 応答に更新トークンが**無ければ失敗**（何も保存しない）。ある場合だけ、暗号化して保存する（第 6 節）。
-9. 既定で、**認証の試験**を行う（`--no-verify` で省略）: 保存した更新トークンからアクセストークンを得て、メールサーバーへ接続し、XOAUTH2 で認証して切断する
+9. 既定で、**認証の試験**を行う（`--no-verify` で省略）: 保存した更新トークンからアクセストークンを得て、メールサーバーへ接続し、設定の方式（`XOAUTH2` または `OAUTHBEARER`）
+   で認証して切断する
    （メールは読まない）。スコープ・メールボックスの権限・IMAP の有効化の誤りを、その場で見つけるため。
 10. 結果を表示して終わる。排他を解放する。
 
@@ -289,7 +344,7 @@ Open this URL in a browser on a machine that can reach http://localhost:51234/ :
 Waiting for the browser redirect (timeout 300 s). Press Ctrl+C to cancel.
 Authorization code received. Exchanging for tokens...
 Tokens saved (encrypted). Refresh token version: 1.
-Mail server authentication test: succeeded (XOAUTH2).
+Mail server authentication test: succeeded (XOAUTH2).   # or OAUTHBEARER, as configured
 ```
 
 出さないもの: 認可コード、アクセストークン、更新トークン、クライアントシークレット、鍵、ユーザー名（メールアドレス）、リダイレクトで受け取った URL の全体、トークンのエンドポイントの応答の本文。
@@ -305,9 +360,11 @@ Mail server authentication test: succeeded (XOAUTH2).
 ### 5.5 待ち受けの規則（安全）
 
 - 束縛は、**127.0.0.1（と、使えれば `::1`）だけ**。`0.0.0.0` や全アドレスに束縛しない。
-- 許す要求: HTTP の GET、パスがリダイレクト URI と一致、`Host` がループバックの名前、`state` が一致（定数時間の比較）。それ以外は、`400` / `404` を返して**無視**し、待ち続ける（期限まで）。
+- 許す要求: HTTP の GET、パスがリダイレクト URI と一致、`Host` がループバックの名前、`state` が一致（定数時間の比較）。それ以外は、`400` / `404` を返して**無視**し、
+  待ち続ける（期限まで）。
 - 最初の正しい要求を受けたら、待ち受けを閉じる。1 回の認可につき、コードは 1 度しか使わない。
-- 応答の HTML は、固定の短い文面（「このウィンドウを閉じてよい」）。受け取ったパラメーターを**表示しない**。スクリプトを含めない。`Cache-Control: no-store`・`Referrer-Policy: no-referrer`。
+- 応答の HTML は、固定の短い文面（「このウィンドウを閉じてよい」）。受け取ったパラメーターを**表示しない**。スクリプトを含めない。
+  `Cache-Control: no-store`・`Referrer-Policy: no-referrer`。
 - 期限（既定 300 秒。`--timeout`）が来たら失敗。待ち受けの要求の URL を、ログ・例外に出さない（認可コードを含む）。
 - 認可サーバーのエラー（`error=...`）は、**許可リストにある `error` のコード**だけを表示し、`error_description`（トレース ID などを含み得る）は表示しない。
 
@@ -330,7 +387,7 @@ Mail server authentication test: succeeded (XOAUTH2).
 
 1. （Microsoft・Google の側で原因を確かめる。パスワードの変更・管理者の取り消し・Testing の 7 日・長期間の未使用など。2.4）
 2. 同じコマンド `oauth2-authorize --config <path> --source <sourceId>` を再実行する。**既存の行を上書きし、状態を `Active` に戻す**。
-3. `oauth2-status` で `Active` を確かめ、次の `run` を待つ（取り込み待ちのメールは、メールサーバーに残っており、次回の実行で取り込まれる。#66 の既存の設計のとおり）。
+3. `oauth2-status` で `Active` を確かめ、次の `run` を待つ（取り込み待ちのメールは、メールサーバーに残っており、次回の実行で取り込まれる。既存の設計のとおり）。
 
 ## 6. トークンの保存と更新
 
@@ -355,9 +412,9 @@ Mail server authentication test: succeeded (XOAUTH2).
   寿命が短いトークンを保存する利点は、このツールの実行頻度では小さい。
 - トークンの文字列・メールアドレスは、`IngestItems` など、他の表に入れない。
 
-### 6.2 暗号化の方式と鍵
+### 6.2 暗号化の方式と鍵（Q3 の決定を前提にする）
 
-- **方式（推奨）**: AES-256-GCM。12 バイトの乱数のナンス、16 バイトのタグ、**AAD（追加認証データ）に文脈を入れる**。
+- **方式**: AES-256-GCM。12 バイトの乱数のナンス、16 バイトのタグ、**AAD（追加認証データ）に文脈を入れる**。
   書式は、Core の `SecretProtector`（`VehicleVision.PleasanterTools.Core.Web`、
   [v0.1.1 の実装][core-protector]）と同じ `v2$<nonce>$<tag>$<cipher>`（各 Base64）にそろえる。
   この実装は、**明示的に渡された 32 バイトの鍵だけ**を使い、鍵の生成・保存・設定の解決はしない。
@@ -367,11 +424,13 @@ Mail server authentication test: succeeded (XOAUTH2).
   **DB のバックアップと同じ場所に鍵を置かない**運用を、文書で求める。
 - **鍵を失ったとき・間違えたとき**: 復号に失敗する。`Status` は変えず、`OAuth2KeyMismatch` で source を止める。再認可すれば、新しい鍵で上書きできる。
 - **鍵の交換**: 初版は単一の鍵。交換は「新しい鍵を渡して再認可」で代替する。専用のコマンド（`oauth2-rekey`）や、複数の鍵（鍵 ID の列）は後続。
-- **置き場の問題**: `SecretProtector` は **Core.Web** にある。Core.Web は ASP.NET Core の共有フレームワーク（`FrameworkReference Microsoft.AspNetCore.App`）に依存する。
-  本ツールは「Core.Web は今回は不要」と決めており（[アーキテクチャ方針](アーキテクチャ方針.md) 第 2 節）、CLI に ASP.NET Core の依存を足したくない。
+- **置き場（決定 Q3）**: `SecretProtector` は、現状は **Core.Web** にある。
+  Core.Web は ASP.NET Core の共有フレームワーク（`FrameworkReference Microsoft.AspNetCore.App`）に依存する。
+  本ツールは「Core.Web は今回は不要」と決めており（[アーキテクチャ方針](アーキテクチャ方針.md) 第 2 節）、CLI に ASP.NET Core の依存を足さない。
   Core.Data には、暗号化の部品が**無い**（確認済み: Core のリポジトリで `AesGcm` を使うのは Core.Web の `SecretProtector` のみ）。
-  選択肢は Q3 で聞く。**推奨は、Core 側で `SecretProtector` を、フレームワーク参照の無いプロジェクト（Core.Data か小さな新規部品）へ置く**こと
-  （共有物は Core に置く方針）。
+  **そこで、Core 側で、`SecretProtector`（AES-256-GCM）を、ASP.NET Core に依存しない場所（Core.Data か、小さな新規部品）へ置く。Core の作業が先**で、
+  本リポジトリの実装 PR は、その公開の後に行う（共有物は Core に置く方針）。本リポジトリに複製を持たず、Core.Web も参照しない。
+  書式（`v2$...`）と AAD の使い方は上のとおり、Core の部品を呼ぶだけにする。
 
 [core-protector]: https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Core/blob/v0.1.1/src/VehicleVision.PleasanterTools.Core.Web/SecretProtector.cs
 
@@ -382,9 +441,11 @@ source ごとの実行排他（`SourceRuns`）を取った**後**、メールサ
 1. 行を読む。無い・`Status` が `Active` でない・`GrantFingerprint` が現在の設定と違う・復号に失敗: 更新せずに止める（第 8 節）。
 2. トークンのエンドポイントへ `grant_type=refresh_token` を **1 回だけ**送る。再試行のループを作らない（ロックアウトの回避。パスワード認証と同じ原則）。
 3. 応答に新しい更新トークンがあり、値が違うとき: **新しい値を暗号化して、`TokenVersion` の比較つきで書き込む**。
-   書き込みに失敗したら、**そのアクセストークンを使わず**、source を止める（`OAuth2StoreFailure`）。古い更新トークンは、Microsoft では取り消されない（2.1）ので、DB の古い行は引き続き有効なはず。
+   書き込みに失敗したら、**そのアクセストークンを使わず**、source を止める（`OAuth2StoreFailure`）。古い更新トークンは、Microsoft では取り消されない（2.1）ので、
+   DB の古い行は引き続き有効なはず。
    ただし仕様上は、サーバーが古いものを取り消してよい（2.1）。この危険を残さないため、**書き込みの成功を確かめてからアクセストークンを使う**。
-4. アクセストークンを、メモリだけで使い、`SaslMechanismOAuth2(ユーザー, アクセストークン)` で認証する。接続の終了後、参照を捨てる。保存しない。ログ・例外に出さない。
+4. アクセストークンを、メモリだけで使い、`SaslMechanismOAuth2(ユーザー, アクセストークン)`（設定が `XOAUTH2` のとき）
+   または `SaslMechanismOAuthBearer(ユーザー, アクセストークン)`（`OAUTHBEARER` のとき）で認証する。接続の終了後、参照を捨てる。保存しない。ログ・例外に出さない。
 
 **クラッシュの窓**: 手順 2 の応答を受けた後、手順 3 の書き込みの前にプロセスが落ちると、新しい更新トークンは失われる。
 Microsoft は古い更新トークンを取り消さないため（2.1）、DB の古い値で、次回も更新できる見込み。**ただし実機で確かめていない（未確認）**。
@@ -397,7 +458,7 @@ Google が回転するかは未確認（2.2）。
 - **`oauth2-authorize` も、同じ排他を取る**（第 5.2 節の手順 2）。認可の最中に `run` が走って古い値で更新する競合を防ぐ。
 - 排他とは別に、`TokenVersion` の比較つき更新（楽観的な排他）を**防御として**入れる。更新件数が 0 なら `OAuth2TokenConflict` で止まる（通常は起きない）。
 - 同じメールボックスを 2 つの source が使うなら、**認可は source ごとに別**（更新トークンを共有しない）。Google は 1 アカウント・1 クライアント ID あたり 100 個の上限がある（2.2）。
-- 異常終了で残った排他は、既存の課題（#85）のとおり、人が確認して解除する。
+- 異常終了で残った排他は、既存の課題のとおり、人が確認して解除する。
 
 ### 6.5 失敗の分類（更新の失敗・失効）
 
@@ -413,9 +474,11 @@ Google が回転するかは未確認（2.2）。
 | 書き込みの失敗・版の不一致 | 設定・認証（運用の確認） | 変えない | `OAuth2StoreFailure` / `OAuth2TokenConflict` |
 | メールサーバーが XOAUTH2 を拒否（トークンは取れた） | 設定・認証 | **変えない** | 既存の `MailAuthentication`（原因の候補は第 8 節） |
 
-- 失敗した source だけを止める（他の source へ波及させない。既存の方針）。**メールサーバーへ触れない回復（結果不明の照合・受信後操作の再開）は、従来どおり行う**（#82）。
+- 失敗した source だけを止める（他の source へ波及させない。既存の方針。第 7.2 節の DB を見る検査の失敗も同じ）。**メールサーバーへ触れない回復（結果不明の照合・受信後操作の再開）は、
+  従来どおり行う**（既存の設計）。
 - 毎回の実行で、失効した更新トークンを使って更新を試みない（`Status` を見て、通信せずに止まる）。
-- 終了コード: 上の失敗は、source の停止として、既存の規則どおり **1**（処理エラー）。起動時の検査の失敗（第 7 節）は **2**。
+- 終了コード: 上の失敗は、source の停止として、既存の規則どおり **1**（処理エラー）。起動時の**静的な**検査の失敗（第 7.1 節）は **2**。DB を見る検査の失敗（第 7.2 節）は、
+  source の停止なので **1**。
 
 ## 7. 起動前検査（`IngestRunner.Check`・`validate`）への影響
 
@@ -429,7 +492,8 @@ Google が回転するかは未確認（2.2）。
 | `mode` と `oauth2` ブロックの整合（`oauth2` に `oauth2` ブロックが無い、`password` に有る） | エラー |
 | `password` の項目（パスワード変数・`allowInsecurePasswordAuthentication`）が `oauth2` にある | エラー（混在の禁止） |
 | `provider` が未知 | エラー |
-| `allowedMechanisms` が `["XOAUTH2"]` でない（省略・空・他の値・重複） | エラー |
+| `allowedMechanisms` が `["XOAUTH2"]` でも `["OAUTHBEARER"]` でもない（省略・空・他の値・重複・**両方の併記**） | エラー（`MechanismsInvalid`。混在の場合は、混在であることを示す） |
+| `provider` が `microsoft365` で `allowedMechanisms` が `["OAUTHBEARER"]` | 警告（`MechanismUnconfirmedForProvider`。2.3.1 で一次情報に記述が無い） |
 | `tls` が `None` | エラー（`OAuth2RequiresTls`。第 9 節） |
 | `tenant`・`clientSecretEnvironmentVariable` の有無がプロバイダーの規則に反する | エラー |
 | `clientId` が空 | エラー |
@@ -452,9 +516,14 @@ DB のトークンの有無は、DB に接続できる `run` でしか分から�
 | `GrantFingerprint` が現在の設定と一致 | `OAuth2GrantMismatch` |
 | 更新トークンを復号できる（復号した値は捨てる。**値は出さない**） | `OAuth2KeyMismatch` |
 
-**失敗の扱い（推奨）**: 静的な検査の失敗は、既存の規則どおり、起動エラー（終了コード 2・何も実行しない）。
-DB を見る検査の失敗は、**その source だけを止め、他の source は実行する**（終了コード 1）。
-未認可の source が 1 つあるだけで、他の source の取り込みが全部止まるのを避けるため。Q7。
+**失敗の扱い（決定 Q7）**: 静的な検査の失敗は、既存の規則どおり、起動エラー（終了コード 2・何も実行しない）。
+DB を見る検査の失敗（行が無い・失効・設定の不一致・鍵の誤り）は、**その source だけを止め、他の source は実行する**。終了コード 1。運用サマリーに source ごとの停止の理由（第 6.5 節のコード）を出す。
+未認可の source が 1 つあるだけで、他の source の取り込みが全部止まるのを避けるため。
+
+**既存の方針との関係（どこが例外か）**: [アーキテクチャ方針](アーキテクチャ方針.md) は、起動設定の不正を終了コード 2（何も実行しない）とし、
+認証の失敗や許可外の設定は「設定・認証」として**対象ソースを停止し、人の修正待ち**にする（第 6 節の分類、終了コード 1）。
+本節の決定は、これと食い違わない。静的な検査（`validate` でも見られる）は従来どおり全体を止め、**DB を開かないと分からない検査だけを、既存の「設定・認証」と同じ source 単位の停止にした**。
+この source 単位の扱いは、OAuth2 の DB の検査に限る。静的な検査・DB 接続の失敗・マイグレーション未適用などの全体を止める扱いは、変えない。
 
 検査は、**プロバイダーへ通信しない**（トークンの有効性は、`run` の中の更新で初めて分かる）。`oauth2-status` は、7.2 を実行して、結果のコードだけを表示する。
 いずれの検査も、秘密の中身（トークン・鍵・ユーザー名）を出力しない。
@@ -463,32 +532,40 @@ DB を見る検査の失敗は、**その source だけを止め、他の source
 
 - **サマリー・`--json`・構造化ログには、固定のコードだけを出す**（第 6.5 節のコード）。トークン・鍵・メールアドレス・エンドポイントの応答の本文は出さない。
 - 運用サマリーには、source ごとの `StopReason` として上のコードが出る。終了コード 1 になる。
-- **管理者への通知は、ツールの機能にしない**（推奨）。ツールは、終了コードとサマリーで失効を知らせる。
+- **管理者への通知は、ツールの機能にしない**（決定 Q8）。ツールは、終了コードとサマリーで失効を知らせる。
   通知は、実行するスケジューラー・監視（終了コードの監視）に任せる。`oauth2-status` を定期的に実行して、`RefreshedAt` が古い（初期候補: 60 日超）ことを検知する運用も勧める
-  （Microsoft の既定の寿命 90 日・Google の未使用 6 か月、2.1・2.2）。ツール自身のメール送信は、対象外（SMTP 送信は対象外）。Q8。
+  （Microsoft の既定の寿命 90 日・Google の未使用 6 か月、2.1・2.2）。ツール自身のメール送信は、対象外（SMTP 送信は対象外）。
 
 メールサーバーが、トークンを取れたのに XOAUTH2 を拒否する場合の原因の候補（実機では未確認の仮説）:
 
 | プロバイダー | 候補 |
 | --- | --- |
 | Microsoft 365 | そのメールボックスで IMAP / POP3 が無効（2.1）。スコープの不足。アプリケーションの許可を使う場合は、`New-ServicePrincipal` の ID の取り違え（2.1）・メールボックスの許可（`FullAccess`）の不足。共有メールボックスは、ユーザー名の指定が違う（2.1） |
-| Gmail | Gmail 側で IMAP が無効、または Workspace の管理者が OAuth のアクセスを制限（`admin_policy_enforced`。2.2）。**サーバーが XOAUTH2 を広告しない（OAUTHBEARER だけ。2.3）** |
+| Gmail | Gmail 側で IMAP が無効、または Workspace の管理者が OAuth のアクセスを制限（`admin_policy_enforced`。2.2）。**サーバーが、設定した方式を広告しない（XOAUTH2 と OAUTHBEARER の一方だけ。2.3.1）。`NoAllowedAuthentication` で、認証を送らずに止まる** |
 
 ## 9. 認証許可リストとの整合・接続保護
 
-- 設定の `allowedMechanisms` は `["XOAUTH2"]` の**明示が必須**で、
-  `password` の方式（`PLAIN`・`LOGIN`・`USER/PASS` など）との**混在は禁止**。1 つの source は 1 つの認証方式。
-- 認証の前に、**サーバーの広告（`AuthenticationMechanisms`）・MailKit が対応する方式・設定の許可リストの共通部分**を取る（`PasswordAuthenticationPlanner` と同じ考え方の純粋な計画）。
-  共通部分が空（サーバーが XOAUTH2 を広告しない）なら、**認証を送らずに停止**（`NoAllowedAuthentication`）。**トークンも更新しない**（6.3 の手順の順序）。
-- 認証は `client.AuthenticateAsync(new SaslMechanismOAuth2(ユーザー, アクセストークン))` と、方式を直接渡す（2.3）ので、パスワードや他の SASL へ**フォールバックしない**。
-  XOAUTH2 が失敗しても、パスワード認証を試さない。同じトークンを使い回して再試行もしない。
+- 設定の `allowedMechanisms` は `["XOAUTH2"]` か `["OAUTHBEARER"]` の**どちらか 1 つの明示が必須**で（決定 8-3 の拡張。第 1 節）、
+  `password` の方式（`PLAIN`・`LOGIN`・`USER/PASS` など）との**混在も、2 つの OAuth2 方式の併記も禁止**。1 つの source は 1 つの認証方式。
+- 認証の前に、**サーバーの広告（`AuthenticationMechanisms`）
+  ・MailKit が対応する方式・設定の許可リストの共通部分**を取る（`PasswordAuthenticationPlanner` と同じ考え方の純粋な計画）。
+  共通部分が空（サーバーが、設定の方式を広告しない。例: `OAUTHBEARER` だけが広告されているのに設定が `XOAUTH2`）なら、
+  **認証を送らずに停止**（`NoAllowedAuthentication`）。**トークンも更新しない**（6.3 の手順の順序）。
+- 認証は、設定の方式に応じて `client.AuthenticateAsync(new SaslMechanismOAuth2(ユーザー, アクセストークン))`（`XOAUTH2`）または
+  `client.AuthenticateAsync(new SaslMechanismOAuthBearer(ユーザー, アクセストークン))`（`OAUTHBEARER`）と、方式を直接渡す（2.3）ので、
+  パスワードや他の SASL へ**フォールバックしない**。
+  設定が `XOAUTH2` で広告が `OAUTHBEARER` だけでも、**自動で切り替えない**（運用者が設定を直す）。失敗しても、もう一方の方式やパスワード認証を試さない。同じトークンを使い回して再試行もしない。
+- **OAUTHBEARER の認証の文字列**は 2.3.1 の形（GS2 の `n,a=<ユーザー>,` に `auth=Bearer <トークン>`。MailKit は `host`・`port` も付ける）。
+  失敗のチャレンジには、単独の `^A` を返す（MailKit の実装。2.3.1）。XOAUTH2 の失敗時の空の応答（2.2）とは違うが、いずれも MailKit が処理する。
+  `host`・`port` の値に使う接続先の情報を MailKit が渡すかは**未確認**で、偽のサーバーで形を確かめる（第 12 節の試験）。
 - `IMailAuthenticator` の新しい実装 `OAuth2Authenticator`（`.Mail/Auth`）を、
   `MailKitSessionFactory` の `authenticatorFactory` で、`mode` に応じて選ぶ。
   資格情報の型は、パスワード用の `MailCredentials`（ユーザー名・パスワード）のままでは足りない。
-  実装では、**ユーザー名とアクセストークンの提供元（`IAccessTokenProvider`）を持つ別の資格情報**へ抽象化する（案。細部は実装の PR で、`IMailSessionFactory.ConnectAsync` の引数を整理する）。
+  実装では、**ユーザー名とアクセストークンの提供元（`IAccessTokenProvider`）を持つ別の資格情報**へ抽象化する（案。細部は実装の PR で、
+  `IMailSessionFactory.ConnectAsync` の引数を整理する）。
 - **接続保護**: OAuth2 は `tls: Tls` または `StartTls` のときだけ許す。`None` は起動エラー（`OAuth2RequiresTls`）。
   アクセストークンは、パスワードと同じく平文で流してはならない。`StartTls` は、昇格と証明書検証の成功の後にだけ認証する（既存の規則のとおり）。
-  `allowInsecurePasswordAuthentication` のような緩めるフラグは設けない。
+  `allowInsecurePasswordAuthentication` のような緩めるフラグは設けない。OAUTHBEARER は、RFC 7628 が TLS を MUST としている（2.3.1）。
 - 証明書の検証（`certificateValidation`）は、既存の規則（`Strict` が既定）のまま。トークンのエンドポイントへの HTTPS は、OS の信頼ストアで検証し、緩めない。
 
 ## 10. セキュリティの検討
@@ -510,8 +587,9 @@ DB を見る検査の失敗は、**その source だけを止め、他の source
 
 - スコープは設定にさせず固定（第 4.1 節）。Microsoft は IMAP または POP のスコープだけ（`Mail.Read` や Graph の権限を要求しない）。
 - Gmail は、`https://mail.google.com/` が唯一の通常のスコープで、**狭められない**（読み取り専用の IMAP 用スコープは、今回の一次情報に無い）。
-  このスコープは、メールの完全な削除までを含む記述（2.2）で、権限が広い。**初版は `leave` のみ（#84 の前）なので、ツールはメールを変更しないが、トークン自体は広い権限を持つ**。保存の暗号化と、鍵の分離が、より重要になる。
-- Microsoft のアプリ専用（Q4）は、`FullAccess` を**メールボックスごとに**許可できる（2.1）。委任より、対象を絞りやすい。
+  このスコープは、メールの完全な削除までを含む記述（2.2）で、権限が広い。**初版は `leave` のみ（受信後操作の既読・移動・削除は後続）なので、ツールはメールを変更しないが、トークン自体は広い権限を持つ**。
+  保存の暗号化と、鍵の分離が、より重要になる。
+- Microsoft のアプリ専用（後続。Q4）は、`FullAccess` を**メールボックスごとに**許可できる（2.1）。委任より、対象を絞りやすい。
 
 ### 10.3 ループバックのリダイレクトの安全性
 
@@ -529,93 +607,68 @@ DB を見る検査の失敗は、**その source だけを止め、他の source
 
 - HTTPS のみ。リダイレクトを辿らない・Cookie 無し（Pleasanter 用の `HttpClient` と同じ流儀）。応答の大きさに上限を置く（初期候補: 64 KiB）。タイムアウトは 30 秒（既存の初期候補）。
 - エンドポイントはコードに固定。`tenant` は形式を検査してから URL に使う（パスの注入を防ぐ）。
-- 依存ライブラリ（MSAL・Google.Apis.Auth）を使うかは Q2。**推奨は使わず、薄い自前の実装**にして、トークンの保存・回転を自分で制御する（決定 8-1）こと。
+- 依存ライブラリ（MSAL・Google.Apis.Auth）は**使わず**（決定 Q2）、標準の `HttpClient` による薄い自前の実装にして、トークンの保存・回転を自分で制御する（決定 8-1）。
   MSAL は独自のキャッシュに更新トークンを持つ。DB へ暗号化して保存する決定とは、キャッシュの直列化の差し込みが要り、扱う面が増える（未検証の推測）。
 
-## 11. ユーザーへの質問（順に 1 つずつ答える）
+## 11. 決定済みの事項（Q1〜Q9。2026-11-27）
 
-選択肢と推奨を示す。決まるたびに、この文書の該当の節を直す。
+起案時の質問 9 件に、ユーザーが回答した。Q5 だけが、起案時の推奨（A）と違う（B）。決定は、この文書の該当の節に反映した（表の右端が反映先の節）。
 
-### Q1. 認可の方式と、画面の無いサーバーの手順
+| 質問 | 決定 | 理由 | 却下した選択肢 | 反映先 |
+| --- | --- | --- | --- | --- |
+| Q1 認可の方式と、画面の無いサーバーの手順 | 認可コード + PKCE + ループバックだけ。`--port`（SSH のポート転送）と `--paste` の両方を初版で用意する。Microsoft のデバイスコードは入れない | Gmail は IMAP のスコープでデバイスコードを使えず（2.2）、方式を 2 本にすると試験と未検証の範囲が増える | B: Microsoft だけデバイスコードを足す。C: `--paste` を入れない | 3、5 |
+| Q2 トークン取得の実装 | 薄い自前の実装（標準の `HttpClient`）。MSAL.NET・Google.Apis.Auth は使わない | 依存を増やさず、更新トークンの保存・回転を自分で制御する（決定 8-1）。細部は自前の試験で担保する | B: MSAL.NET と Google.Apis.Auth | 2.3、10.5 |
+| Q3 暗号化の部品の置き場 | `SecretProtector`（AES-256-GCM）を、Core 側の、ASP.NET Core に依存しない場所（Core.Data か小さな新規部品）へ置く。**Core の作業が先**で、本リポジトリの実装 PR はその公開の後 | 共有物は Core に置く方針。CLI に ASP.NET Core の依存を入れない | B: 本リポジトリに複製を持つ。C: Core.Web を参照する | 6.2、12 |
+| Q4 Microsoft 365 のアプリ専用 | 初版は委任（ユーザー）だけ。アプリ専用は後続の別の Issue。`oauth2.grant` に拡張点を残す | 決定 8-1 の更新トークンの保存を前提にしており、アプリ専用は PowerShell の登録など未確認の事項が多い（2.1） | B: 初版からアプリ専用も作る | 1、4.1 |
+| Q5 認証方式の名前（**推奨と違う**） | `allowedMechanisms` の許可値に `OAUTHBEARER` も足す。値は `["XOAUTH2"]` か `["OAUTHBEARER"]` の**どちらか 1 つ**で、混在させない。決定 8-3（XOAUTH2 だけ）の拡張 | MailKit の Gmail の文書は OAUTHBEARER を使い、Google の文書は XOAUTH2 を記述する。サーバーの広告に運用者が合わせられるようにする。自動の切り替え（フォールバック）はしない | A（推奨だった）: XOAUTH2 だけにし、食い違いが分かってから足す | 1、2.3.1、4.1、7.1、9、12 |
+| Q6 Gmail のサービスアカウント | 初版の対象外（範囲外と第 1 節に明記） | トークンの取得手順を一次情報で確認していない | B: 初版から含める | 1、2.2 |
+| Q7 未認可の source の扱い | DB を見る検査（行が無い・失効・設定の不一致・鍵の誤り）の失敗は、その source だけを止め、他の source は実行する。終了コード 1 | 1 つの source の失効で全部が止まるのを避ける。既存の「設定・認証は対象ソース停止」と同じ扱い | B: 起動エラー（2）にして何も実行しない | 6.5、7.2、8 |
+| Q8 管理者への通知 | ツールは通知しない。終了コード・サマリーのコード・`oauth2-status` で知らせ、通知は監視に任せる | SMTP 送信は範囲外で、通知用の秘密も増える | B: 失効時にメールを送る | 8 |
+| Q9 アプリの登録・OAuth クライアント | 運用者が自分のテナント・プロジェクトで登録する。配布者は手順を文書で示すだけで、共通のクライアント ID は配布しない | Google の制限付きスコープの審査（12 か月ごと。2.2）と、Microsoft のマルチテナントの公開の責任を、配布者が負わない | B: 配布者が共通のアプリを用意する | 3.3 |
 
-- A（推奨）: 認可コード + PKCE + ループバックだけ。画面の無いサーバーには、`--port` + SSH のポート転送と、`--paste` の両方を初版で用意する。Microsoft のデバイスコードは入れない。
-  理由は第 3.2 節（Gmail が使えない・方式を 2 本にしない）。
-- B: A に、Microsoft 365 だけデバイスコード（`--device-code`）を足す。画面の無いサーバーでは楽だが、方式が 2 本になり、Gmail と手順が違う。
-- C: `--paste` を初版に入れず、SSH のポート転送だけにする。実装は減るが、SSH を使えない環境で詰む。
+Q5 は、決定 8-3 の拡張として扱った。矛盾が残らないよう、第 1 節（拡張の表）・4.1・7.1・9 を、どちらか 1 つの明示という形でそろえた。
+決定による設計の変更は、この表に書いた範囲を超えて広げていない。
 
-### Q2. トークンの取得の実装
+## 12. 実装の分け方
 
-- A（推奨）: 薄い自前の実装（標準の `HttpClient`。PKCE・認可 URL・コードの引き換え・更新・エラーの分類）。依存の追加なし、更新トークンの保存・回転を自分で制御できる。セキュリティ上の細部は、自前の試験で担保する。
-- B: MSAL.NET（Microsoft）と Google.Apis.Auth（Google）を使う。実績があるが、依存が 2 つ増え（ライセンス・NOTICE・脆弱性の追従）、独自のキャッシュと、決定 8-1（DB へ暗号化して保存）の整合に作り込みが要る。
-
-### Q3. 暗号化の部品の置き場
-
-- A（推奨）: Core 側で、`SecretProtector`（AES-256-GCM）を、ASP.NET Core に依存しない場所（Core.Data か、小さな新規部品）へ置く（別リポジトリの作業。本 PR では触れない）。
-  本ツールは、それを使う。実装の PR は、その公開の後。
-- B: 本リポジトリの `.Data` に、同じ書式（`v2$...`）の小さな実装を持つ。早いが、複製になる（後で Core へ寄せる課題が残る）。
-- C: Core.Web を参照する。ASP.NET Core の共有フレームワークへの依存が CLI に入るため、不採用を推奨。
-
-### Q4. Microsoft 365 のアプリ専用（クライアント資格情報）
-
-- A（推奨）: 初版は委任（ユーザー）だけ。`oauth2.grant` に拡張点を残し、アプリ専用は別の Issue で後続にする（決定 8-1 の更新トークン保存を前提にしているため）。
-- B: 初版からアプリ専用も作る。無人運用に向く（更新トークンも、パスワード変更による失効も無い見込み）。ただし、PowerShell でのサービスプリンシパルの登録・メールボックスごとの許可の手順と、未確認事項（2.1）が増え、実機の検証が重くなる。
-
-### Q5. Gmail の認証方式の名前
-
-- A（推奨）: `XOAUTH2` だけ（決定 8-3 のとおり）。Gmail が XOAUTH2 を広告しないことが実機で分かったら、そのときに追加を決める。
-- B: 許可値に `OAUTHBEARER` も足す（`allowedMechanisms` は `["XOAUTH2"]` か `["OAUTHBEARER"]` のどちらか 1 つ。混在させない）。
-  MailKit の Gmail の文書は OAUTHBEARER を使うため。ただし、これは決定 8-3 の拡張になる。
-
-### Q6. Gmail のサービスアカウント（ドメイン全体の委任）
-
-- A（推奨）: 初版の対象外。範囲外として、第 1 節に明記する（取得手順を一次情報で確認していない）。
-- B: 初版から含める。Workspace の無人運用に向くが、取得手順の確認と、実機の検証が増える。
-
-### Q7. 未認可の source の扱い（起動前検査）
-
-- A（推奨）: DB を見る検査（行が無い・失効・設定の不一致・鍵の誤り）の失敗は、**その source だけを止め**、他の source は実行する。終了コード 1。
-- B: 起動エラー（終了コード 2）にして、**何も実行しない**。既存の「起動前検査の失敗は全体を止める」に合う。ただし、1 つの source の失効で、全部が止まる。
-
-### Q8. 管理者への通知
-
-- A（推奨）: ツールは通知しない。終了コード・サマリーのコード・`oauth2-status` で知らせ、通知は監視に任せる。
-- B: 失効の検知時に、設定した宛先へメールを送る。SMTP 送信が対象外であり、秘密（SMTP の資格情報）が増えるため、避けたい。
-
-### Q9. アプリの登録・OAuth クライアントの用意
-
-- A（推奨）: 運用者が自分のテナント・プロジェクトで登録する。配布者は、登録の手順を文書で示すだけ（共通のクライアント ID を配布しない）。Google の制限付きスコープの審査の負担が、配布者に生じない。
-- B: 配布者が共通のアプリを用意する。運用者は楽だが、Google の制限付きスコープのセキュリティ評価（12 か月ごと。2.2）と、Microsoft のマルチテナントの公開の責任が、配布者に生じる。
-
-## 12. 実装の分け方（案）
-
-実装用の子 Issue は、この設計のレビュー後に起こす（今は起こさない）。
+実装用の子 Issue は、この設計の確定後に起こす（今は起こさない）。Core の作業（0 番）が先で、1 番以降の本リポジトリの PR はその公開の後に行う（決定 Q3）。
 
 | 順 | PR（案） | 内容 | 前提 |
 | --- | --- | --- | --- |
-| 0 | （Core）暗号化の部品 | Q3 の A のとき。本リポジトリの作業ではない | — |
-| 1 | 共通の部分 | 設定の解析と静的な検査（第 4・7.1 節）。`M0002` と `OAuthTokenStore`（楽観的な排他）。暗号化の利用。トークンの更新とエラーの分類。`OAuth2Authenticator`・計画・資格情報の抽象化。`oauth2-authorize` の本体（待ち受け・PKCE・`state`・`--paste`）と `oauth2-status`。`run` への統合（DB を見る検査・停止の理由・サマリー）。**プロバイダーは差し込みの形にし、実装は無い**（`ProviderNotImplemented`）。偽の認可サーバーで試験 | 0 |
+| 0 | （Core）暗号化の部品 | **前提（決定 Q3）**。`SecretProtector`（AES-256-GCM、`v2$...` の書式）を、ASP.NET Core に依存しない場所（Core.Data か小さな新規部品）へ置いて公開する。本リポジトリの作業ではなく、これが公開されるまで 1 番に着手しない | — |
+| 1 | 共通の部分 | 設定の解析と静的な検査（第 4・7.1 節）。`M0002` と `OAuthTokenStore`（楽観的な排他）。暗号化の利用。トークンの更新とエラーの分類。`OAuth2Authenticator`（`XOAUTH2` と `OAUTHBEARER` の両方。方式は設定から 1 つ）・計画・資格情報の抽象化。`oauth2-authorize` の本体（待ち受け・PKCE・`state`・`--paste`）と `oauth2-status`。`run` への統合（DB を見る検査・停止の理由・サマリー）。**プロバイダーは差し込みの形にし、実装は無い**（`ProviderNotImplemented`）。偽の認可サーバーで試験 | 0 |
 | 2 | Microsoft 365 | プロバイダーの実装（エンドポイント・スコープ・エラーの対応）、`tenant` の検査、設定例・README・参照資料の更新、実機の確認の手順書 | 1 |
 | 3 | Gmail | 同上（Google の認可のエンドポイントと、`access_type=offline` などの条件を、原文で確認してから） | 1。2 と並行できる |
 
 ### 試験の方針
 
-- **単体**: PKCE（RFC 7636 の付録のテストベクター）、`state` の定数時間比較、認可 URL の組み立て、スコープの固定、設定の検査（第 7.1 節の全項目）、エラーの分類（第 6.5 節の表）、
+- **単体**: PKCE（RFC 7636 の付録のテストベクター）、`state` の定数時間比較、認可 URL の組み立て、スコープの固定、設定の検査（第 7.1 節の全項目。
+  `allowedMechanisms` の混在・併記のエラーと、`microsoft365` + `OAUTHBEARER` の警告を含む）、エラーの分類（第 6.5 節の表）、
   暗号化の往復と AAD の不一致・鍵の誤りでの失敗、**漏えいの試験**（トークン・コード・鍵に見立てた目印の文字列が、例外・ログ・サマリー・`--json` に出ないこと）。
-- **統合（偽のサーバー）**: ループバックの偽の認可サーバー兼トークンのエンドポイント（`HttpListener`）で、認可 → 保存 → 更新（回転・書き込みの失敗・版の不一致）→ 失効（`invalid_grant`）を通す。
-  偽の IMAP / POP3 で、`AUTHENTICATE XOAUTH2` の文字列の形（2.1・2.2 の形式）と、広告に XOAUTH2 が無いとき**認証もトークンの更新も送らない**ことを試す。
+- **統合（偽のサーバー）**: ループバックの偽の認可サーバー兼トークンのエンドポイント（`HttpListener`）で、認可 → 保存 → 更新（回転・書き込みの失敗・版の不一致）
+  → 失効（`invalid_grant`）を通す。
+  偽の IMAP / POP3 で、`AUTHENTICATE XOAUTH2` の文字列の形（2.1・2.2 の形式）と、`AUTHENTICATE OAUTHBEARER` の文字列の形（2.3.1 の形。
+  GS2 のヘッダー・`host`・`port`・`auth`・失敗時の単独 `^A`）の**両方**を確かめる。
+  広告に設定の方式が無いとき（`XOAUTH2` と設定して `OAUTHBEARER` だけが広告される場合、その逆）、**認証もトークンの更新も送らず、もう一方の方式へ切り替えない**ことを試す。
+  MailKit が接続先の情報を渡して `host`・`port` を組み立てるかも、ここで確かめる。
   GreenMail が XOAUTH2 に対応するかは未確認なので、自前の偽サーバーを使う前提にする。
 - **実機（ユーザーの環境）**: Microsoft 365 のテスト用のテナント・メールボックスと、Gmail のテスト用アカウントが要る。ユーザーが用意する（決定 8-2）。
 
 ### 未検証になる範囲（実機が無いと確認できないもの）
 
-- Microsoft: アプリの登録の手順、`http://localhost` のリダイレクトと IPv6 の挙動、更新トークンの回転の実際（古い値が引き続き使えるか）、90 日の失効、パスワード変更による失効、IMAP 無効時の挙動、アクセストークンの寿命。
-- Gmail: XOAUTH2 の広告の有無、認可のエンドポイントと `access_type=offline` の要否、クライアントシークレットの要否、Testing の 7 日の失効、In production・未審査のときの更新トークンの寿命、更新トークンが回転するか。
-- 共通: 長時間の実行の途中でアクセストークンが切れたときのサーバーの挙動（接続の確立時に検証されるのが一般的だが、今回の資料では**未確認**）。
+- Microsoft: Exchange Online が OAUTHBEARER を受け付けるか、アプリの登録の手順、`http://localhost` のリダイレクトと IPv6 の挙動、
+  更新トークンの回転の実際（古い値が引き続き使えるか）、90 日の失効、パスワード変更による失効、IMAP 無効時の挙動、アクセストークンの寿命。
+- Gmail: XOAUTH2・OAUTHBEARER のどちらを広告し受け付けるか（Google の文書は XOAUTH2、MailKit の文書は OAUTHBEARER）、
+  認可のエンドポイントと `access_type=offline` の要否、クライアントシークレットの要否、Testing の 7 日の失効、In production・未審査のときの更新トークンの寿命、更新トークンが回転するか。
+- 共通: 応答の文字列の形が実サーバーに通るか（特に OAUTHBEARER の `host`・`port`）、長時間の実行の途中でアクセストークンが切れたときのサーバーの挙動（接続の確立時に検証されるのが一般的だが、
+  今回の資料では**未確認**）。
 
 ## 13. 実機の未検証と、確認していない仕様について
 
 - **この文書は設計であり、実装も実機の検証もない。** 第 2 節は、公開文書の記述を確認したもので、接続して動作を確かめたものではない。
 - Google の各ページは要約を介した確認で、更新日の記載がなかった。数値（7 日・6 か月・100 個・12 か月）は、実装時に原文で再確認する。
+- OAUTHBEARER の確認結果は 2.3.1（参照日 2026-11-27）。Microsoft・Google の文書に記述が無いこと、RFC の SMTP の例の `n,user=` の食い違い、
+  MailKit が接続先の情報から `host`・`port` を組み立てるかは、未確認のまま。
 - 「未確認」と書いた項目（Microsoft のアクセストークンの既定の寿命・クライアント資格情報の更新トークン・ホスト名とポート・IMAP の PowerShell のパラメーター名、
   Google の認可のエンドポイント・`access_type=offline`・更新トークンの回転・アクセストークンの寿命・DWD のトークン取得）は、事実として扱わない。
 - 一次情報が将来変わり得る。実装の PR で、参照日を更新して再確認する。
